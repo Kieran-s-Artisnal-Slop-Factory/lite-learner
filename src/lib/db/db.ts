@@ -25,6 +25,17 @@ const MIGRATIONS: Migration[] = [
       }
     }
   },
+  // v2 — content-backed reshape: rows are now keyed by content slug (id =
+  // slug) and carry content_hash + cached content fields; `chapters.course`
+  // became parent-held ordered arrays and the redundant `complete` boolean is
+  // gone. v1 rows were UUID-keyed scaffold data with no content attached and
+  // cannot be mapped to slugs, so the stores are cleared; rows are rebuilt
+  // from the static content by the content-hash sync on next visit.
+  (_db, tx) => {
+    for (const name of Object.keys(STORES)) {
+      tx.objectStore(name).clear();
+    }
+  },
 ];
 
 export const DB_VERSION = MIGRATIONS.length;

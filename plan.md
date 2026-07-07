@@ -185,38 +185,51 @@ From the user's perspective:
 De-risk the engine **before** authoring content around it. Build a throwaway spike
 page that proves the risky pieces work together:
 
-- [ ] Load SQLite WASM in a Web Worker and instantiate a fresh in-memory DB
-- [ ] Run a seed script (`initial_sql`), then a user query, and render the rows in
+- [x] Load SQLite WASM in a Web Worker and instantiate a fresh in-memory DB
+- [x] Run a seed script (`initial_sql`), then a user query, and render the rows in
       a scratch DB viewer
-- [ ] Validate a statement with `prepare()` and bubble the thrown error to the UI
-- [ ] Run a `{ query, rows }` solution check through the coercion comparator
+- [x] Validate a statement with `prepare()` and bubble the thrown error to the UI
+      (note learned: prepare resolves table names against the *current* schema, so
+      a buffer that creates a table and then queries it fails prepare-only
+      validation until the create has run — Run just executes and bubbles errors;
+      Validate is a separate prepare-only action)
+- [x] Run a `{ query, rows }` solution check through the coercion comparator
 - [ ] Confirm the whole flow works **offline** via the service worker
-- [ ] Confirm CodeMirror 6 + a SQL mode bundles cleanly and works offline
-- [ ] Confirm in-memory mode avoids the COOP/COEP header requirement (see
-      Technical requirements)
+      (precache verified complete — all 28 assets incl. sqlite3.wasm, the worker
+      chunk, and /spike/ are in the SW cache after install, and the SW serves
+      cache-first on network failure; the final human check is toggling DevTools
+      offline and reloading /spike/)
+- [x] Confirm CodeMirror 6 + a SQL mode bundles cleanly and works offline
+- [x] Confirm in-memory mode avoids the COOP/COEP header requirement
+      (`crossOriginIsolated === false` and the engine runs fine)
 
 # Phase 1 (Schema finalization and content)
 
-- [ ] Reshape the IndexedDB schema (`src/lib/db/types.ts` + a new appended
+- [x] Reshape the IndexedDB schema (`src/lib/db/types.ts` + a new appended
       migration in `src/lib/db/db.ts`)
-    - [ ] Key content-backed stores by slug and add `content_hash`
-    - [ ] Add `title` to courses, chapters, and exercises
-    - [ ] Replace the `chapters.course` FK with parent-holds-ordered-children
+    - [x] Key content-backed stores by slug and add `content_hash`
+    - [x] Add `title` to courses, chapters, and exercises
+    - [x] Replace the `chapters.course` FK with parent-holds-ordered-children
           arrays: `courses.chapters[]`, `chapters.exercises[]`
-    - [ ] Drop the redundant `complete` boolean (derive from `completed`)
-    - [ ] Type `desired_state` as `{ query: string; rows: Record<string, unknown>[] }`
-- [ ] Define the three [Astro content collections](https://docs.astro.build/en/guides/content-collections/)
+    - [x] Drop the redundant `complete` boolean (derive from `completed`)
+    - [x] Type `desired_state` as `{ query: string; rows: Record<string, unknown>[] }`
+- [x] Define the three [Astro content collections](https://docs.astro.build/en/guides/content-collections/)
       and their Zod schemas, using `reference()` for the chapter/exercise arrays
-- [ ] Implement the content-hash emit + IndexedDB cache-invalidation flow
-- [ ] Scaffold an example course teaching the basics of SQLite
-    - [ ] 2 chapters
-        - [ ] Creating a table
-            - [ ] Exercise 1 — `CREATE TABLE`
-            - [ ] Exercise 2 — idempotency: `CREATE TABLE IF NOT EXISTS` and
+- [x] Implement the content-hash emit + IndexedDB cache-invalidation flow
+      (`src/lib/content/bundle.ts` emits at build time, `src/lib/content/sync.ts`
+      reconciles client-side; /courses/ wires it end to end and resolves the
+      reference() arrays at build time so broken slugs fail the build)
+- [x] Scaffold an example course teaching the basics of SQLite
+    - [x] 2 chapters
+        - [x] Creating a table
+            - [x] Exercise 1 — `CREATE TABLE`
+            - [x] Exercise 2 — idempotency: `CREATE TABLE IF NOT EXISTS` and
                   re-runnability in schema files
-        - [ ] Creating and querying content
-            - [ ] Exercise 1 — creating a row: `INSERT INTO`
-            - [ ] Exercise 2 — reading a row: `SELECT`
+        - [x] Creating and querying content
+            - [x] Exercise 1 — creating a row: `INSERT INTO`
+            - [x] Exercise 2 — reading a row: `SELECT` (checkable via
+                  `CREATE TABLE adults AS SELECT …`, since validation inspects
+                  DB state rather than the query text)
 
 # Phase 2
 
@@ -289,5 +302,6 @@ page that proves the risky pieces work together:
   connection is available it looks for updates, otherwise it serves from cache.
     - Thread Astro's configured `base` through the service worker so precache
       paths resolve correctly on subpath deploys (e.g. GitHub Pages under
-      `/repo/`). The current `public/sw.js` hardcodes absolute `/` paths and would
-      break there.
+      `/repo/`). **Done** — `sw.js` derives every path from its registration
+      scope (which is the base, since the worker lives at `${base}/sw.js`), and
+      the Layout registers it via `import.meta.env.BASE_URL`.

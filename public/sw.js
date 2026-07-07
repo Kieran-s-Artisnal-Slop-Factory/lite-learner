@@ -12,7 +12,16 @@
  *    from the network in the background whenever it is reachable.
  */
 const CACHE_NAME = 'lite-learner-cache-v1';
-const PRECACHE = ['/', '/exercises/', '/courses/', '/chapters/', '/settings/', '/onboarding/', '/favicon.svg'];
+
+// The worker is served from `${base}/sw.js`, so its registration scope IS the
+// configured Astro base ('/' on root deploys, '/repo/' on subpath deploys
+// like GitHub Pages). Deriving every path from it keeps the precache correct
+// without hardcoding the base in two places.
+const BASE = new URL(self.registration.scope).pathname; // always ends with '/'
+const ASSET_PREFIX = BASE + '_astro/';
+const PRECACHE = ['', 'exercises/', 'courses/', 'chapters/', 'settings/', 'onboarding/', 'spike/', 'favicon.svg'].map(
+  (path) => BASE + path
+);
 
 // Servers often send `Vary: Origin`, and module import() requests carry an
 // Origin header while our install-time fetches don't — without ignoreVary the
@@ -44,14 +53,17 @@ async function precacheEverything() {
     if (!/html|javascript|css/.test(type)) continue;
     const text = await response.clone().text();
     const enqueue = (path) => {
-      if (path.startsWith('/_astro/') && !seen.has(path)) {
+      if (path.startsWith(ASSET_PREFIX) && !seen.has(path)) {
         seen.add(path);
         queue.push(path);
       }
     };
-    // Absolute references (HTML tags, dynamic import() chunk paths).
-    for (const match of text.matchAll(/\/_astro\/[A-Za-z0-9_.\-]+/g)) {
-      enqueue(match[0]);
+    // Absolute references (HTML tags, dynamic import() chunk paths). Matched
+    // without the base prefix, then resolved against it, so fingerprinted
+    // chunk paths are found however the bundle spells them.
+    for (const match of text.matchAll(/[A-Za-z0-9_.\-/]*\/_astro\/[A-Za-z0-9_.\-]+/g)) {
+      const path = match[0].startsWith('/') ? match[0] : BASE + match[0].replace(/^\.?\//, '');
+      enqueue(path);
     }
     // Relative references (Vite emits static imports as "./chunk.js").
     const base = new URL(url, self.location.origin);
@@ -94,7 +106,7 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() =>
-          caches.match(request, MATCH_OPTS).then((cached) => cached ?? caches.match('/', MATCH_OPTS))
+          caches.match(request, MATCH_OPTS).then((cached) => cached ?? caches.match(BASE, MATCH_OPTS))
         )
     );
     return;

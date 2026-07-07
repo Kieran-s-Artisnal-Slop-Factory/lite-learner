@@ -1,0 +1,83 @@
+/**
+ * CLIENT-SIDE content-cache invalidation. Pages embed *Content payloads
+ * (built by bundle.ts, each carrying a content_hash); on load these functions
+ * reconcile them with the cached IndexedDB rows:
+ *
+ *  - no row       -> create it from the embedded content
+ *  - hash differs -> overwrite the cached CONTENT fields + hash, preserving
+ *                    PROGRESS (started/completed/user_solution/current_chapter)
+ *  - hash matches -> use the cache as-is
+ *
+ * Rows are keyed by content slug (id = slug), which is what makes the lookup
+ * stable across builds.
+ */
+import { getDB } from '../db/db';
+import { nowIso, put } from '../db/repo';
+import type { Chapters, Courses, Exercises, StoreName, SyncFields } from '../db/types';
+import type { ChapterContent, CourseContent, ExerciseContent } from './types';
+
+/** Raw row fetch that sees tombstones — a re-enrollment must revive them. */
+async function rawGet<T extends SyncFields>(store: StoreName, slug: string): Promise<T | undefined> {
+  return (await (await getDB()).get(store, slug)) as T | undefined;
+}
+
+function newContentRow(slug: string): SyncFields {
+  return { id: slug, updated_at: nowIso(), deleted_at: null, server_seq: null };
+}
+
+export async function syncCourse(content: CourseContent): Promise<Courses> {
+  const existing = await rawGet<Courses>('courses', content.slug);
+  if (existing && !existing.deleted_at && existing.content_hash === content.content_hash) {
+    return existing;
+  }
+  return put<Courses>('courses', {
+    ...(existing ?? { ...newContentRow(content.slug), current_chapter: null, started: null, completed: null }),
+    deleted_at: null,
+    content_hash: content.content_hash,
+    title: content.title,
+    description: content.description,
+    chapters: content.chapters,
+  } as Courses);
+}
+
+export async function syncChapter(content: ChapterContent): Promise<Chapters> {
+  const existing = await rawGet<Chapters>('chapters', content.slug);
+  if (existing && !existing.deleted_at && existing.content_hash === content.content_hash) {
+    return existing;
+  }
+  return put<Chapters>('chapters', {
+    ...(existing ?? { ...newContentRow(content.slug), started: null, completed: null }),
+    deleted_at: null,
+    content_hash: content.content_hash,
+    title: content.title,
+    description: content.description,
+    exercises: content.exercises,
+  } as Chapters);
+}
+
+export async function syncExercise(content: ExerciseContent): Promise<Exercises> {
+  const existing = await rawGet<Exercises>('exercises', content.slug);
+  if (existing && !existing.deleted_at && existing.content_hash === content.content_hash) {
+    return existing;
+  }
+  return put<Exercises>('exercises', {
+    ...(existing ?? { ...newContentRow(content.slug), user_solution: null, started: null, completed: null }),
+    deleted_at: null,
+    content_hash: content.content_hash,
+    title: content.title,
+    description: content.description,
+    initial_sql: content.initial_sql,
+    desired_state: content.desired_state,
+  } as Exercises);
+}
+
+/** Cache a whole course (course + chapters + exercises) — the enrollment copy. */
+export async function syncCourseBundle(bundle: {
+  course: CourseContent;
+  chapters: ChapterContent[];
+  exercises: ExerciseContent[];
+}): Promise<Courses> {
+  for (const exercise of bundle.exercises) await syncExercise(exercise);
+  for (const chapter of bundle.chapters) await syncChapter(chapter);
+  return syncCourse(bundle.course);
+}
