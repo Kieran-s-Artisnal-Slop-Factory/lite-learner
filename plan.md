@@ -1,116 +1,293 @@
 # Lite Learner
 
-Lite learner is a statically generated learning management system that gives you an interactive in-browser way to learn sqlite. The project was bootstrapped using local-sync-template and is a static astro + svelte frontend that has the state of the users progress stored in indexdb. 
+Lite Learner is a statically generated learning management system that gives you an
+interactive in-browser way to learn SQLite. The project was bootstrapped using
+local-sync-template and is a static Astro + Svelte frontend that stores the user's
+progress in IndexedDB.
 
-## What is setup
+## What the scaffold provides
 
-The local-sync-template app created this scaffold and set everything up. The existing code is a **starting point** to build from. It gives a good foundation for how user data is persisted and managed within the client context. Each has as part of it's schema an `id`, `updated_at`, and `deleted_at` fields, as well as `server_seq`. These fields are largely irrelevant and should be left alone since this project will not use a sync backend. 
+local-sync-template created this scaffold and wired up the persistence layer. The
+existing code is a **starting point** — a good foundation for how user data is
+persisted and managed entirely on the client.
 
-The setup currently includes 3 main tables:
+Every entity carries bookkeeping fields — `id`, `updated_at`, `deleted_at`, and
+`server_seq`. These are largely irrelevant to this project (there is no sync
+backend) and should be **left alone** so soft deletes keep working and a sync
+backend could be added later without a data migration.
 
-- courses
-    - description (text): The description of the course in markdown
-    - current_chapter (text, Nullable, foreign key of chapters.id): The current chapter of the course the user is on, null if not started
-    - completed (timestamp, Nullable): When the course was completed, or null if not complteted
-    - started (timestamp, Nullable): When the course was started, or null if not started
-- chapters
-    - description (text): The description of the chapter in markdown
-    - course (text, foreign key of courses.id): The course the chapter is associated with
-    - completed (timestamp, Nullable): When the chapter was completed, or null if not complteted
-    - started (timestamp, Nullable): When the chapter was started, or null if not started
-- exercises
-    - user_solution (text): the current text representing the users solution. Allows for resumability if a user navigates off a page mid-exercise
-    - completed (timestamp, Nullable): When the exercise was completed, or null if not complteted
-    - started (timestamp, Nullable): When the exercise was started, or null if not started
-    - initial_sql (text): The initial starting content to get the user going, will also be the value that the exercise is reset to if the user asks to reset
-    - desired_state (json object): The solution information with the schema `{query: "<sql query>", rows: [{column_name: expected_value}]}` where the query is what gets run, and then the result is checked against the `rows` to see if the exercise has been completed or not
+The scaffold currently ships three stores (`courses`, `chapters`, `exercises`).
+The data model below reshapes them; Phase 1 implements that reshape.
+
+## Data model
+
+The app has two distinct kinds of data, and keeping them straight is the most
+important design decision in the project:
+
+- **Content** — titles, descriptions, `initial_sql`, `desired_state` — is authored
+  as markdown, validated by Astro content collections, and baked into the static
+  bundle at build time.
+- **Progress** — `started`, `completed`, `current_chapter`, `user_solution` — is
+  per-visitor and lives only in IndexedDB.
+
+Content is *copied* into IndexedDB on enrollment (so the app works offline and
+progress sits next to the content it describes), and kept fresh with a content
+hash (see below).
+
+### Content collections (authored, static)
+
+Three collections, all markdown (the body is the description). Solutions are
+**embedded in the exercise** rather than living in a separate collection.
+
+- **courses** — `src/content/courses/*.md`
+  - `title` (string)
+  - `chapters` (array of `reference('chapters')`): the chapters in this course.
+    **Array order is the chapter order** — there is no separate `order` field.
+  - body markdown: the course description
+- **chapters** — `src/content/chapters/*.md`
+  - `title` (string)
+  - `exercises` (array of `reference('exercises')`): the exercises in this
+    chapter. **Array order is the exercise order.**
+  - body markdown: the chapter description
+- **exercises** — `src/content/exercises/*.md`
+  - `title` (string)
+  - `initial_sql` (string): the starting content that seeds the exercise, and the
+    value the exercise resets to
+  - `desired_state` (object): the embedded solution, typed as
+    `{ query: string; rows: Record<string, unknown>[] }`. `query` is run against
+    the user's DB and the result is compared to `rows` to decide completion.
+  - body markdown: the exercise description
+
+`desired_state` supports two idioms:
+
+- **Checking only specific fields.** For `SELECT age FROM users ORDER BY age;` the
+  solution is `{ "query": "SELECT age FROM users ORDER BY age;", "rows": [{"age":21},{"age":30}] }`.
+  Only the listed columns matter — other columns in the result rows are ignored.
+- **Inspecting tables.** The query can be a pragma, e.g.
+  `PRAGMA table_info('table_name');`, and `rows` describes the expected schema.
+
+Because everything is static, `desired_state` ships to the browser and the answer
+is inspectable. That is **fine** — this project is a learning tool, not an
+accredited assessment, so being able to "cheat" is acceptable.
+
+### Using `reference()`
+
+Cross-collection links use Astro's [`reference()`](https://docs.astro.build/en/guides/content-collections/#defining-collection-references)
+helper in the Zod schema:
+
+```ts
+// courses schema
+chapters: z.array(reference('chapters'))
+// chapters schema
+exercises: z.array(reference('exercises'))
+```
+
+This gives us two things for free:
+
+1. **Build-time validation** — a referenced slug that doesn't exist fails the
+   build, so broken course/chapter/exercise wiring never ships.
+2. **Query-time resolution** — `getEntry()` (or `getEntries()`) turns a reference
+   into the target entry when rendering.
+
+The array position is the authoritative ordering, so no `order`/`sequence` field
+is needed anywhere.
+
+### IndexedDB (progress + cached content)
+
+Content-backed rows are **keyed by the content slug** (stable across builds), not a
+generated UUID — that stable key is what lets the hash check below find the right
+row. The `id`/`updated_at`/`deleted_at`/`server_seq` bookkeeping fields stay as-is.
+
+- **courses**: `content_hash`, cached content (`title`, `description`,
+  `chapters[]`), progress (`current_chapter`, `started`, `completed`)
+- **chapters**: `content_hash`, cached content (`title`, `description`,
+  `exercises[]`), progress (`started`, `completed`)
+- **exercises**: `content_hash`, cached content (`title`, `description`,
+  `initial_sql`, `desired_state`), progress (`user_solution`, `started`,
+  `completed`)
+
+`completed` is a nullable timestamp and is the **only** completion field — a
+boolean "is complete" is derived from `completed != null`. (The scaffold's extra
+`complete` boolean is dropped.)
+
+### Content caching & invalidation (content hash)
+
+Content is cached into IndexedDB so the app runs offline, but caches must not go
+stale when the course is re-authored and redeployed. We detect staleness with a
+content hash instead of trying to reconcile by slug alone:
+
+- At build time, each course/chapter/exercise page **emits a `content_hash`** — a
+  stable hash of that entry's content (frontmatter + body).
+- Each cached row stores the `content_hash` it was built from.
+- On load, compare the page's emitted hash to the cached row's hash:
+  - **No row** → create it from the embedded content.
+  - **Hash differs** → overwrite the cached **content** fields from the embedded
+    content and update the stored hash, **preserving progress fields**
+    (`started`, `completed`, `user_solution`, `current_chapter`).
+  - **Hash matches** → use the cache as-is.
+
+### Validation & coercion rules
+
+To check an exercise, run `desired_state.query` against the user's current
+in-memory DB and compare the returned rows to `desired_state.rows`.
+
+Every solution query is authored with an explicit `ORDER BY`, so comparison is
+**positional and unambiguous** — the author guarantees exact row count and order,
+and the checker does no set-reconciliation, dedup, or multi-answer handling.
+
+Rules:
+
+- **Row count** — the result must have exactly `rows.length` rows; fewer or more
+  fails.
+- **Column subset** — for each row, only the keys present in the expected object
+  are compared; extra columns in the result are ignored.
+- **Positional** — expected row `i` is compared to result row `i`.
+- **Value coercion** (the expected value drives the comparison):
+  - `null` → matches SQLite `NULL` only (result value `null`/`undefined`).
+  - **number** → normalize the result with `Number()` (covers `BigInt` INTEGERs
+    and REAL). Integers compare exactly; REAL compares within an epsilon
+    (`Math.abs(a - b) <= 1e-9`). Values beyond 2^53 are out of scope.
+  - **boolean** → SQLite has no boolean type; compare `Number(result)` to
+    `expected ? 1 : 0`.
+  - **string** → strict equality against the result value as returned (TEXT →
+    string). No trimming, case-sensitive, no number↔string coercion.
+  - **BLOB** → out of scope for the example course; not supported by the comparator.
+
+This comparator is a pure function `(expectedRows, actualRows) => boolean` — it
+should be **unit-tested in isolation**, since that is where the subtle bugs live.
 
 ## How it should be used
 
-From the teacher perspective:
+From the teacher's perspective:
 
-1. Create a course with a set of chapters, exercises, and solutions. The course, chapter and exercises should be plain markdown files, and the solutions should be a JSON file. The frontmatter for the exercises should include the solution json file name. 
-2. Run `npm run build` and generate a static bundle that creates pages for all the courses, chapters and exercises
-3. Deploy to a static host
+1. Author a course as three kinds of markdown files (courses, chapters, exercises)
+   under `src/content/`. A course's frontmatter lists its chapters in order; a
+   chapter's frontmatter lists its exercises in order; an exercise's frontmatter
+   carries its `initial_sql` and its `desired_state` solution. The markdown bodies
+   are the descriptions.
+2. Run `npm run build` to statically generate a page for every course, chapter,
+   and exercise.
+3. Deploy `dist/` to any static host.
 
-From the user perspective:
+From the user's perspective:
 
-1. User navigates to a set of course listings
-2. User goes to overview page for a course
-3. User enrolls in course. The the course information is cached to the browser in indexDB
-4. User goes through exercises able to have them validated using the 
-4. User goes through the course
+1. Browse the course listing.
+2. Open a course overview page.
+3. Enroll — the course's content is cached into IndexedDB (see content-hash
+   invalidation).
+4. Work through the chapters and their exercises. Each exercise runs against an
+   in-browser SQLite DB and is validated against its `desired_state`.
+5. Progress — started/completed, current position, and in-progress editor buffers
+   — persists in IndexedDB and survives reloads and offline use.
 
+# Phase 0 (Experimentation)
 
-# Phase 1 (Schema Finalization and planning)
+De-risk the engine **before** authoring content around it. Build a throwaway spike
+page that proves the risky pieces work together:
 
-- [ ] Analyze existing project schema and layout
-    - [ ] Suggest any necessary changes to acheive all the goals
-- [ ] Finalize frontmatter schema for the content files
-    - [ ] Solutions
-    - [ ] Exercises
-    - [ ] Chapters
-    - [ ] Courses
-- [ ] Add schema for content files to [astro content collections schema](https://docs.astro.build/en/guides/content-collections/)
-- [ ] Scaffold an example course and content teaching the basics of SQLite
+- [ ] Load SQLite WASM in a Web Worker and instantiate a fresh in-memory DB
+- [ ] Run a seed script (`initial_sql`), then a user query, and render the rows in
+      a scratch DB viewer
+- [ ] Validate a statement with `prepare()` and bubble the thrown error to the UI
+- [ ] Run a `{ query, rows }` solution check through the coercion comparator
+- [ ] Confirm the whole flow works **offline** via the service worker
+- [ ] Confirm CodeMirror 6 + a SQL mode bundles cleanly and works offline
+- [ ] Confirm in-memory mode avoids the COOP/COEP header requirement (see
+      Technical requirements)
+
+# Phase 1 (Schema finalization and content)
+
+- [ ] Reshape the IndexedDB schema (`src/lib/db/types.ts` + a new appended
+      migration in `src/lib/db/db.ts`)
+    - [ ] Key content-backed stores by slug and add `content_hash`
+    - [ ] Add `title` to courses, chapters, and exercises
+    - [ ] Replace the `chapters.course` FK with parent-holds-ordered-children
+          arrays: `courses.chapters[]`, `chapters.exercises[]`
+    - [ ] Drop the redundant `complete` boolean (derive from `completed`)
+    - [ ] Type `desired_state` as `{ query: string; rows: Record<string, unknown>[] }`
+- [ ] Define the three [Astro content collections](https://docs.astro.build/en/guides/content-collections/)
+      and their Zod schemas, using `reference()` for the chapter/exercise arrays
+- [ ] Implement the content-hash emit + IndexedDB cache-invalidation flow
+- [ ] Scaffold an example course teaching the basics of SQLite
     - [ ] 2 chapters
         - [ ] Creating a table
-            - [ ] Exercise 1.
-                - [ ] `CREATE TABLE`
-            - [ ] Exercise 2
-                - [ ] Idempotency; understanding `CREATE TABLE IF NOT EXISTS` and re-runability in schema files
+            - [ ] Exercise 1 — `CREATE TABLE`
+            - [ ] Exercise 2 — idempotency: `CREATE TABLE IF NOT EXISTS` and
+                  re-runnability in schema files
         - [ ] Creating and querying content
-            - [ ] Exercise 1
-                - [ ] Createing a row; `INSERT INTO`
-            - [ ] Excercise 2
-                - [ ] Reading a row; `SELECT`
+            - [ ] Exercise 1 — creating a row: `INSERT INTO`
+            - [ ] Exercise 2 — reading a row: `SELECT`
 
 # Phase 2
 
-- [ ] Build out course listings page that shows off various courses
+- [ ] Build out the course listings page that shows off the available courses
 - [ ] Build out the course overview page
 - [ ] Build out the chapter overview page
 - [ ] Build out the exercise page
     - [ ] Build out the exercise editor component
-        - [ ] Build text editor with syntax highlighting and basic warnings
-        - [ ] Build out database viewer component
-    - [ ] Determine how to do validation based on solutions
+        - [ ] CodeMirror 6 text editor with SQL syntax highlighting
+        - [ ] Surface syntax/validity errors by `prepare()`-ing statements against
+              SQLite WASM and bubbling up any thrown error (the engine is the
+              source of truth, not an editor linter)
+        - [ ] Build out the DB viewer component
+    - [ ] Implement solution validation using the coercion comparator above
 
 # Phase 3
 
-- [ ] Build out user onboarding flow
-- [ ] Build out user course onboarding flow
+- [ ] Build out the user onboarding flow
+- [ ] Build out the per-course onboarding/enrollment flow
 
 # Technical requirements
 
-- **Completely static**, should be able to build and deploy the files to a static host provider
-- Astro to power the generation
-    - Using the content collections there should be 4 collections
-        1. Solutions; This folder will contain JSON files that have a representation of a solution to a problem.    
-            - Each one should have a query that gets run, and a JSON representation of what that query should produce
-                - This should support checking only specific fields
-                    - e.g. I have a query like `SELECT age FROM users ORDER BY age;`, then the solution JSON would look like `{query:"SELECT age FROM users ORDER BY age;", rows:[{"age":21}, {"age":30}]}` the only thing that matters is the values of the age, not the state of any other columns in the rows when the validation check is run
-                - This should support inspecting tables
-                    - e.g. I have a query like `PRAGMA table_info('table_name');`
-        2. Exercises; These markdown files contain a description of an exercise for someone to complete
-        3. Chapters: These markdown files contain a description of a chapter, and it's constituent exercises
-        4. Courses; These markdown files contain details about the course, and it's constituent chapters
-- Svelte for reactivity
-    - Use svelte 5 with runes
-- IndexDB to persist user state
-- an in-browser editor for exercises that allows you to write SQL, execute against an in-memory sqlite wasm DB, and visually explore the state of your DB
-    - Monaco editor to use as an in-browser text editor for SQL statements
-        - Ideally wired up to give errors for invalid sqlite syntax
-    - [sqlite wasm](https://github.com/sqlite/sqlite-wasm) as the engine to use for exercises
-    - A custom DB viewer that shows your columns, their datatypes, the first 50 rows, and the ability to move between different tables that exist in the sqlite db
-    - On startup
-        1. Each sqlite DB should be instantiated fresh on exercise load. It should start with a blank new file
-        2. run the `exercise.initial_sql` to initialize the exercise
-        3. run `exercise.user_solution` if it exists to "resume" from where you stopped off before
-        4. The DB viewer should fire up and show you the first table it finds in the DB  (`SELECT tbl_name FROM sqlite_master WHERE type='table' ORDER BY name LIMIT 1;`)
-        5. Check on if `exercise.started` has been set, and if not set it to current time.
-        6. Check on if `exercise.completed` has been set, and if so indicate this exercise is completed
-    - allow user to reset which deletes the db, clears exercise.user_solution, and runs the startup process
-- The entire app should after initial load function **fully offline**. Using a service worker it should cache all the page contents, js, css, etc. necessary to use all the pages normally, and if there is an available connection it should try to look for upates, but if not then serve from cache
-
-
+- **Completely static** — build and deploy the files to any static host provider.
+- Astro powers the generation.
+    - **Three** content collections, all markdown:
+        1. **courses** — `title`, ordered `chapters` references, description body
+        2. **chapters** — `title`, ordered `exercises` references, description body
+        3. **exercises** — `title`, `initial_sql`, embedded `desired_state`
+           solution, description body
+    - The `desired_state` solution has a `query` that is run and a `rows`
+      representation of what it should produce, supporting subset-of-columns
+      checks and pragma inspection (see Data model → Validation & coercion rules).
+- Svelte for reactivity.
+    - Use Svelte 5 with runes.
+- IndexedDB persists user state.
+- An in-browser editor for exercises that lets you write SQL, execute it against an
+  in-memory SQLite WASM DB, and visually explore the DB state.
+    - **[CodeMirror 6](https://codemirror.net/)** as the in-browser SQL editor —
+      chosen over Monaco because it is a fraction of the size, bundles cleanly with
+      Vite/Astro, and works offline without an AMD loader or worker setup.
+        - Validity errors come from `prepare()`-ing statements in SQLite WASM and
+          surfacing the thrown error, not from an editor-side SQL linter.
+    - [sqlite-wasm](https://github.com/sqlite/sqlite-wasm) as the exercise engine,
+      run in a **Web Worker** so a slow or looping query never freezes the editor.
+    - **Stay in-memory (no OPFS).** OPFS-backed persistence needs
+      `SharedArrayBuffer`, which requires cross-origin isolation
+      (`Cross-Origin-Opener-Policy: same-origin` +
+      `Cross-Origin-Embedder-Policy: require-corp`) headers that many static hosts
+      won't let you set. A fresh in-memory DB per exercise sidesteps that entirely
+      and keeps deployment host-agnostic.
+    - A custom DB viewer that shows your columns, their datatypes, the first 50
+      rows, and the ability to move between the tables that exist in the DB.
+    - On exercise load:
+        1. Instantiate a fresh in-memory SQLite DB (blank file).
+        2. Run `exercise.initial_sql` to seed the exercise.
+        3. Restore the editor buffer from `exercise.user_solution` if it exists —
+           **but do not execute it.** In-memory DB state is the sum of every
+           statement ever run, which a single stored buffer cannot reproduce, and
+           auto-running a half-finished buffer could throw. Instead show a
+           **warning banner**: the database has been reset, re-run your statements
+           to restore its state.
+        4. Open the DB viewer on the first table found:
+           `SELECT tbl_name FROM sqlite_master WHERE type='table' ORDER BY name LIMIT 1;`
+        5. If `exercise.started` is null, set it to the current time.
+        6. If `exercise.completed` is set, indicate the exercise is completed.
+    - Allow the user to reset, which discards the in-memory DB, clears
+      `exercise.user_solution`, and re-runs the startup process.
+- After initial load the app must function **fully offline**. A service worker
+  caches all page contents, JS, CSS, etc. needed to use every page normally; when a
+  connection is available it looks for updates, otherwise it serves from cache.
+    - Thread Astro's configured `base` through the service worker so precache
+      paths resolve correctly on subpath deploys (e.g. GitHub Pages under
+      `/repo/`). The current `public/sw.js` hardcodes absolute `/` paths and would
+      break there.
