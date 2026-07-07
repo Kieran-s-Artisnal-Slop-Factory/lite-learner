@@ -1,8 +1,55 @@
 ---
+// Homepage: a static introduction to the site, plus (for enrolled visitors)
+// the progress dashboard island. The island renders nothing when no course
+// is enrolled, so first-time visitors only see the intro.
 import Layout from '../layouts/Layout.astro';
 import HomeApp from '../components/apps/HomeApp.svelte';
 ---
 
 <Layout title="Home">
+  <div class="page-header">
+    <h1>lite-learner</h1>
+    <a class="btn btn-primary" href="/courses/">Browse courses →</a>
+  </div>
+
+  <section class="intro">
+    <p class="tagline">Learn SQL by writing it.</p>
+    <p class="muted">
+      lite-learner is an interactive way to learn SQLite. Every exercise runs against a real
+      SQLite database in your browser — write a statement in the editor, run it, and watch the
+      database change. Solutions are checked against the actual state of your database, not a
+      multiple-choice answer.
+    </p>
+    <ul class="muted points">
+      <li>No account and no server — enroll in a course and it's copied into this browser.</li>
+      <li>Your progress and editor buffers are saved locally and survive reloads.</li>
+      <li>After the first visit, everything works fully offline.</li>
+    </ul>
+  </section>
+
   <HomeApp client:only="svelte" />
 </Layout>
+
+<style>
+  .intro {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    max-width: 65ch;
+    margin-bottom: var(--space-6);
+  }
+
+  .tagline {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--gb-yellow);
+  }
+
+  .points {
+    padding-left: var(--space-5);
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+</style>

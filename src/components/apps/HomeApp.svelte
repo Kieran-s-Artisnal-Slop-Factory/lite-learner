@@ -1,9 +1,12 @@
 <script lang="ts">
   /**
-   * Dashboard homepage: completion stats, in-progress items with quick links,
-   * and recently completed exercises/chapters/courses. Everything is read
-   * from IndexedDB — links are reconstructed from the parent-holds-children
-   * arrays (courses.chapters[] / chapters.exercises[]).
+   * Homepage progress dashboard: completion stats, in-progress items with
+   * quick links, and recently completed exercises/chapters/courses.
+   * Everything is read from IndexedDB — links are reconstructed from the
+   * parent-holds-children arrays (courses.chapters[] / chapters.exercises[]).
+   *
+   * Renders NOTHING when the visitor isn't enrolled in any course — the
+   * static intro in index.astro is the whole homepage in that case.
    */
   import { onMount } from 'svelte';
   import { all } from '../../lib/db/repo';
@@ -137,23 +140,7 @@
   };
 </script>
 
-<div class="page-header">
-  <h1>lite-learner</h1>
-  <a class="btn" href="/courses/">Browse courses →</a>
-</div>
-
-{#if loading}
-  <p class="muted">Loading…</p>
-{:else if !hasAnything}
-  <div class="hero">
-    <h2>Learn SQL by writing it.</h2>
-    <p class="muted">
-      Every exercise runs against a real SQLite database in your browser. Enroll in a course and
-      your progress stays on this device — no account, works offline.
-    </p>
-    <a class="btn btn-primary" href="/courses/">Browse courses</a>
-  </div>
-{:else}
+{#if !loading && hasAnything}
   <div class="stack">
     <div class="tiles">
       <div class="tile">
@@ -216,15 +203,6 @@
 {/if}
 
 <style>
-  .hero {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-4);
-    padding: var(--space-6) 0;
-    max-width: 40rem;
-  }
-
   .tiles {
     display: grid;
     gap: var(--space-4);
