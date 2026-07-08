@@ -11,6 +11,12 @@
   import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
   import { tags } from '@lezer/highlight';
   import { sql, SQLite } from '@codemirror/lang-sql';
+  import {
+    EDITOR_THEME_EVENT,
+    EDITOR_THEME_KEY,
+    editorColorScheme,
+    getEditorScheme,
+  } from '../../lib/editorTheme';
 
   let {
     initialDoc = '',
@@ -31,6 +37,7 @@
       backgroundColor: 'var(--editor-bg)',
       color: 'var(--text-color)',
       fontSize: 'var(--font-size-sm)',
+      borderRadius: 'var(--radius-md)',
     },
     '.cm-content': { caretColor: 'var(--editor-cursor)' },
     '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--editor-cursor)' },
@@ -45,6 +52,56 @@
     '.cm-activeLineGutter': {
       backgroundColor: 'var(--editor-active-line)',
       color: 'var(--text-color)',
+    },
+    // Autocomplete ("intellisense") popup. CodeMirror's default tooltip
+    // theme clashes with gruvbox and is hard to read — drive it from the
+    // theme tokens so it stays legible in light, dark, and forced schemes.
+    '.cm-tooltip': {
+      backgroundColor: 'var(--editor-tooltip-bg)',
+      color: 'var(--editor-tooltip-fg)',
+      border: '1px solid var(--editor-tooltip-border)',
+      borderRadius: 'var(--radius-sm)',
+      boxShadow: 'var(--shadow-2)',
+    },
+    '.cm-tooltip.cm-tooltip-autocomplete > ul': {
+      fontFamily: 'var(--font-body)',
+      fontSize: 'var(--font-size-sm)',
+      maxHeight: '15em',
+    },
+    '.cm-tooltip-autocomplete > ul > li': {
+      padding: '2px 6px',
+      color: 'var(--editor-tooltip-fg)',
+    },
+    '.cm-tooltip-autocomplete > ul > li[aria-selected]': {
+      backgroundColor: 'var(--editor-tooltip-selected-bg)',
+      color: 'var(--editor-tooltip-selected-fg)',
+    },
+    '.cm-completionIcon': {
+      color: 'var(--text-muted-color)',
+      opacity: '1',
+      paddingRight: '0.6em',
+    },
+    '.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionIcon': {
+      color: 'var(--editor-tooltip-selected-fg)',
+    },
+    '.cm-completionMatchedText': {
+      color: 'var(--editor-match-fg)',
+      textDecoration: 'none',
+      fontWeight: '700',
+    },
+    '.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionMatchedText': {
+      color: 'var(--editor-tooltip-selected-fg)',
+      textDecoration: 'underline',
+    },
+    '.cm-completionDetail': {
+      color: 'var(--text-muted-color)',
+      fontStyle: 'italic',
+    },
+    '.cm-completionInfo': {
+      backgroundColor: 'var(--editor-tooltip-bg)',
+      color: 'var(--editor-tooltip-fg)',
+      border: '1px solid var(--editor-tooltip-border)',
+      borderRadius: 'var(--radius-sm)',
     },
   });
 
@@ -65,6 +122,16 @@
 
   export function setText(text: string): void {
     view?.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
+  }
+
+  // Pin the editor (and its popup) to the user's chosen scheme by overriding
+  // color-scheme on the host — the light-dark() tokens resolve per-subtree.
+  function applyScheme() {
+    if (host) host.style.colorScheme = editorColorScheme(getEditorScheme());
+  }
+
+  function onStorage(e: StorageEvent) {
+    if (e.key === EDITOR_THEME_KEY) applyScheme();
   }
 
   onMount(() => {
@@ -90,9 +157,16 @@
       ],
       parent: host,
     });
+    applyScheme();
+    window.addEventListener(EDITOR_THEME_EVENT, applyScheme);
+    window.addEventListener('storage', onStorage);
   });
 
-  onDestroy(() => view?.destroy());
+  onDestroy(() => {
+    view?.destroy();
+    window.removeEventListener(EDITOR_THEME_EVENT, applyScheme);
+    window.removeEventListener('storage', onStorage);
+  });
 </script>
 
 <div class="editor" bind:this={host}></div>
@@ -101,7 +175,8 @@
   .editor {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    overflow: hidden;
+    /* No overflow:hidden — it would clip the autocomplete popup. The inner
+       .cm-editor rounds its own corners to match the border instead. */
   }
 
   .editor :global(.cm-editor) {

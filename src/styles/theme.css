@@ -73,6 +73,13 @@
   --syntax-operator: var(--gb-aqua);
   --syntax-name: var(--gb-blue);
   --syntax-punctuation: var(--gb-fg-muted);
+  /* Autocomplete ("intellisense") popup */
+  --editor-tooltip-bg: var(--gb-bg0-soft);
+  --editor-tooltip-fg: var(--gb-fg);
+  --editor-tooltip-border: var(--gb-bg3);
+  --editor-tooltip-selected-bg: var(--color-primary);
+  --editor-tooltip-selected-fg: var(--color-on-primary);
+  --editor-match-fg: var(--color-primary-strong);
 
   /* ── Typography ──────────────────────────────────────────────────── */
   --font-body: ui-monospace, "Cascadia Code", Consolas, "SF Mono", monospace;

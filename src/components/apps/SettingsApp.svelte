@@ -8,17 +8,26 @@
     type ExportEnvelope,
   } from '../../lib/db/export';
   import { requestPersistentStorage, type PersistState } from '../../lib/db/persistence';
+  import { getEditorScheme, setEditorScheme, type EditorScheme } from '../../lib/editorTheme';
 
   const THEME_KEY = 'lite-learner-theme';
+
+  const editorThemes: { value: EditorScheme; label: string }[] = [
+    { value: 'match', label: 'Match app' },
+    { value: 'light', label: 'Light' },
+    { value: 'dark', label: 'Dark' },
+  ];
 
   let message: string | null = $state(null);
   let messageOk = $state(true);
   let busy = $state(false);
   let theme = $state('auto');
+  let editorTheme = $state<EditorScheme>('match');
   let persistState: PersistState | null = $state(null);
 
   onMount(async () => {
     theme = localStorage.getItem(THEME_KEY) ?? 'auto';
+    editorTheme = getEditorScheme();
     inDeveloperMode = sessionStorage.getItem(DEV_MODE_KEY) === '1';
   });
 
@@ -27,6 +36,11 @@
     if (value === 'auto') localStorage.removeItem(THEME_KEY);
     else localStorage.setItem(THEME_KEY, value);
     document.documentElement.style.colorScheme = value === 'auto' ? '' : value;
+  }
+
+  function setEditor(value: EditorScheme) {
+    editorTheme = value;
+    setEditorScheme(value);
   }
 
   async function persist() {
@@ -93,16 +107,39 @@
 
 <div class="stack">
   <Card title="Appearance">
-    <div class="row">
-      {#each ['auto', 'light', 'dark'] as value}
-        <button
-          class="btn"
-          class:btn-primary={theme === value}
-          onclick={() => setTheme(value)}
-        >
-          {value}
-        </button>
-      {/each}
+    <div class="stack">
+      <div class="setting">
+        <p class="setting-label">Theme</p>
+        <div class="row">
+          {#each ['auto', 'light', 'dark'] as value}
+            <button
+              class="btn"
+              class:btn-primary={theme === value}
+              onclick={() => setTheme(value)}
+            >
+              {value}
+            </button>
+          {/each}
+        </div>
+      </div>
+      <div class="setting">
+        <p class="setting-label">Editor</p>
+        <p class="muted small">
+          Colour scheme for the SQL editor and its autocomplete popup — pin it light or dark
+          independent of the app theme.
+        </p>
+        <div class="row">
+          {#each editorThemes as opt (opt.value)}
+            <button
+              class="btn"
+              class:btn-primary={editorTheme === opt.value}
+              onclick={() => setEditor(opt.value)}
+            >
+              {opt.label}
+            </button>
+          {/each}
+        </div>
+      </div>
     </div>
   </Card>
 
@@ -198,6 +235,11 @@
 
   .small {
     font-size: var(--font-size-sm);
+  }
+
+  .setting-label {
+    font-weight: 600;
+    margin-bottom: var(--space-2);
   }
 
   .modal-backdrop {
