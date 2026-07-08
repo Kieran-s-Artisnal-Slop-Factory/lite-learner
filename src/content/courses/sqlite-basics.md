@@ -1,14 +1,25 @@
 ---
-title: SQLite Basics
+title: Beginner SQLite
 chapters:
-  - creating-a-table
-  - creating-and-querying-content
+  - what-is-a-database
+  - sql-fundamentals
+  - what-makes-sqlite-different
+  - exploring-a-database
+  - reading-data-with-select
+  - filtering-data
+  - sorting-and-limiting
+  - creating-tables
+  - modifying-data-crud
+  - relationships-and-joins
+  - beginner-project
 ---
 
-Learn the fundamentals of SQLite, the world's most deployed database. This
-course takes you from an empty database to creating tables, inserting rows,
-and querying them back out — all in your browser, with nothing to install.
+Go from never having touched a database to comfortably exploring one, querying
+it, and changing it — all in your browser, with nothing to install.
 
-Every exercise runs against a real SQLite database. Write SQL in the editor,
-run it, and watch the database viewer update. Your progress is saved locally
-and the whole course works offline.
+This course starts with what a database even *is*, then walks through reading
+data with `SELECT`, filtering and sorting it, creating your own tables, and
+modifying rows. It finishes by joining related tables and building a small
+database of your own. Every exercise runs against a real SQLite database, and
+your progress is saved locally, so you can work offline and pick up where you
+left off.
