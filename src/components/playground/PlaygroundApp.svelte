@@ -34,6 +34,8 @@
   let saveError = $state<string | null>(null);
   // Set when a snapshot is over 1 MB and awaiting explicit confirmation.
   let pendingLarge = $state<{ sql: string; bytes: number } | null>(null);
+  // Whether exports include row data, or just the schema (CREATE statements).
+  let includeData = $state(true);
 
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -112,6 +114,52 @@
     if (id) void loadTemplate(id);
   }
 
+  function triggerDownload(filename: string, blob: Blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function exportAs(dest: 'clipboard' | 'sql' | 'db' | 'json') {
+    if (!client) return;
+    saveError = null;
+    saveMsg = null;
+    const scope = includeData ? 'schema + data' : 'schema only';
+    try {
+      if (dest === 'clipboard') {
+        const sql = await client.dump(includeData);
+        await navigator.clipboard.writeText(sql);
+        saveMsg = `Copied SQL to clipboard (${scope})`;
+      } else if (dest === 'sql') {
+        const sql = await client.dump(includeData);
+        triggerDownload('playground.sql', new Blob([sql], { type: 'application/sql' }));
+        saveMsg = `Downloaded playground.sql (${scope})`;
+      } else if (dest === 'db') {
+        const bytes = await client.serialize(includeData);
+        triggerDownload('playground.db', new Blob([bytes], { type: 'application/x-sqlite3' }));
+        saveMsg = `Downloaded playground.db (${scope})`;
+      } else {
+        const json = await client.exportJson(includeData);
+        triggerDownload('playground.json', new Blob([json], { type: 'application/json' }));
+        saveMsg = `Downloaded playground.json (${scope})`;
+      }
+    } catch (err) {
+      saveError = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  function onExportPick(event: Event) {
+    const select = event.currentTarget as HTMLSelectElement;
+    const dest = select.value as 'clipboard' | 'sql' | 'db' | 'json' | '';
+    select.value = '';
+    if (dest) void exportAs(dest);
+  }
+
   async function save() {
     if (!client) return;
     saveError = null;
@@ -181,7 +229,7 @@
       </p>
     </div>
     <div class="row head-actions">
-      <label class="template-picker">
+      <label class="picker">
         <span class="visually-hidden">Add from template</span>
         <select onchange={onTemplatePick} disabled={booting} aria-label="Add from template">
           <option value="">+ Add from template…</option>
@@ -190,6 +238,34 @@
           {/each}
         </select>
       </label>
+      <div class="export-group">
+        <div class="seg" role="group" aria-label="Export contents">
+          <button
+            type="button"
+            class="seg-btn"
+            class:on={includeData}
+            aria-pressed={includeData}
+            onclick={() => (includeData = true)}
+            disabled={booting}>Schema + data</button>
+          <button
+            type="button"
+            class="seg-btn"
+            class:on={!includeData}
+            aria-pressed={!includeData}
+            onclick={() => (includeData = false)}
+            disabled={booting}>Schema only</button>
+        </div>
+        <label class="picker export-picker">
+          <span class="visually-hidden">Export database</span>
+          <select onchange={onExportPick} disabled={booting} aria-label="Export database">
+            <option value="">⬇ Export…</option>
+            <option value="clipboard">Copy SQL to clipboard</option>
+            <option value="sql">SQL file (.sql)</option>
+            <option value="db">SQLite file (.db)</option>
+            <option value="json">JSON (.json)</option>
+          </select>
+        </label>
+      </div>
       <button class="btn btn-primary" onclick={save} disabled={booting}>💾 Save snapshot</button>
     </div>
   </header>
@@ -301,7 +377,7 @@
     flex-wrap: wrap;
   }
 
-  .template-picker select {
+  .picker select {
     padding: var(--space-2) var(--space-3);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
@@ -311,6 +387,45 @@
     font-size: var(--font-size-sm);
     font-weight: 600;
     cursor: pointer;
+  }
+
+  .export-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+
+  .seg-btn {
+    border: none;
+    background: var(--surface-color);
+    color: var(--text-muted-color);
+    padding: var(--space-2) var(--space-3);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .seg-btn + .seg-btn {
+    border-left: 1px solid var(--border-color);
+  }
+
+  .seg-btn.on {
+    background: var(--color-primary-soft);
+    color: var(--color-primary-strong);
+  }
+
+  .seg-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
   }
 
   .toolbar {

@@ -7,7 +7,9 @@ export type SqlRequest =
   | { id: number; type: 'validate'; sql: string }
   | { id: number; type: 'listTables' }
   | { id: number; type: 'tableData'; name: string }
-  | { id: number; type: 'dump' };
+  | { id: number; type: 'dump'; includeData: boolean }
+  | { id: number; type: 'serialize'; includeData: boolean }
+  | { id: number; type: 'exportJson'; includeData: boolean };
 
 export interface TableData {
   name: string;

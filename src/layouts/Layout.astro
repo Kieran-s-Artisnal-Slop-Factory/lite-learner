@@ -39,6 +39,10 @@ const swPath = base + '/sw.js';
           document.documentElement.style.colorScheme = theme;
           document.documentElement.dataset.theme = theme;
         }
+        const palette = localStorage.getItem('lite-learner-palette');
+        if (palette === 'boring' || palette === 'forrest') {
+          document.documentElement.dataset.palette = palette;
+        }
       } catch {}
     </script>
     <script is:inline>

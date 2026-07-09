@@ -9,6 +9,7 @@
   } from '../../lib/db/export';
   import { requestPersistentStorage, type PersistState } from '../../lib/db/persistence';
   import { getEditorScheme, setEditorScheme, type EditorScheme } from '../../lib/editorTheme';
+  import { getPalette, setPalette, PALETTES, type Palette } from '../../lib/palette';
 
   const THEME_KEY = 'lite-learner-theme';
 
@@ -23,13 +24,20 @@
   let busy = $state(false);
   let theme = $state('auto');
   let editorTheme = $state<EditorScheme>('match');
+  let palette = $state<Palette>('gruvbox');
   let persistState: PersistState | null = $state(null);
 
   onMount(async () => {
     theme = localStorage.getItem(THEME_KEY) ?? 'auto';
     editorTheme = getEditorScheme();
+    palette = getPalette();
     inDeveloperMode = sessionStorage.getItem(DEV_MODE_KEY) === '1';
   });
+
+  function setPaletteChoice(value: Palette) {
+    palette = value;
+    setPalette(value);
+  }
 
   function setTheme(value: string) {
     theme = value;
@@ -118,6 +126,21 @@
               onclick={() => setTheme(value)}
             >
               {value}
+            </button>
+          {/each}
+        </div>
+      </div>
+      <div class="setting">
+        <p class="setting-label">Palette</p>
+        <p class="muted small">Colour scheme for the whole app. Each palette has a light and dark variant.</p>
+        <div class="row">
+          {#each PALETTES as opt (opt.value)}
+            <button
+              class="btn"
+              class:btn-primary={palette === opt.value}
+              onclick={() => setPaletteChoice(opt.value)}
+            >
+              {opt.label}
             </button>
           {/each}
         </div>

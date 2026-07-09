@@ -56,9 +56,22 @@ export class SqlClient {
     return this.#send({ type: 'tableData', name });
   }
 
-  /** Serialize the whole database to re-runnable SQL (schema + data). */
-  dump(): Promise<string> {
-    return this.#send({ type: 'dump' });
+  /** Re-runnable SQL (schema, plus INSERTs when `includeData`). */
+  dump(includeData = true): Promise<string> {
+    return this.#send({ type: 'dump', includeData });
+  }
+
+  /** Binary SQLite file image (`.db`); schema-only when `includeData` is false. */
+  serialize(includeData = true): Promise<Uint8Array> {
+    return this.#send({ type: 'serialize', includeData });
+  }
+
+  /**
+   * Per-table JSON. With data: `{ table: rows[] }`. Schema only:
+   * `{ table: columnInfo[] }`.
+   */
+  exportJson(includeData = true): Promise<string> {
+    return this.#send({ type: 'exportJson', includeData });
   }
 
   /** Run the solution query against the current DB and compare. */

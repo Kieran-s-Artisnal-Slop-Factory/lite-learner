@@ -108,7 +108,7 @@ const quoteId = (name: string): string => '"' + name.replaceAll('"', '""') + '"'
  * list (you can't write them); virtual tables (FTS5, R*Tree) are dumped by
  * their logical columns and their internal shadow tables are omitted.
  */
-async function dump(): Promise<string> {
+async function dump(includeData: boolean): Promise<string> {
   const database = await ensureDb();
   const query = (sql: string): Row[] => {
     const out: Row[] = [];
@@ -133,6 +133,7 @@ async function dump(): Promise<string> {
     const name = String(t.name);
     if (isShadow(name)) continue;
     lines.push(String(t.sql) + ';');
+    if (!includeData) continue;
     // hidden = 0 excludes generated columns (and other non-writable columns).
     const cols = query(
       `SELECT name FROM pragma_table_xinfo(${quoteValue(name)}) WHERE hidden = 0 ORDER BY cid;`
@@ -155,6 +156,71 @@ async function dump(): Promise<string> {
 
   lines.push('COMMIT;');
   return lines.join('\n');
+}
+
+/**
+ * Serialize the database to a binary SQLite file image (`.db`). Schema only
+ * (`includeData` false) replays just the schema into a throwaway DB first, so
+ * the exported file has the tables but no rows.
+ */
+async function serialize(includeData: boolean): Promise<Uint8Array> {
+  const database = await ensureDb();
+  if (includeData) {
+    // Copy out of WASM memory so the transferred bytes outlive the DB.
+    return sqlite3!.capi.sqlite3_js_db_export(database.pointer!);
+  }
+  const schema = await dump(false);
+  const temp = new sqlite3!.oo1.DB(':memory:');
+  try {
+    temp.exec(schema);
+    return sqlite3!.capi.sqlite3_js_db_export(temp.pointer!);
+  } finally {
+    temp.close();
+  }
+}
+
+/**
+ * Export every base table as JSON. With data: `{ table: [rowObjects] }`. Schema
+ * only: `{ table: [{ name, type, notnull, pk }] }`. Virtual tables' internal
+ * shadow tables are skipped; BigInt integers and BLOB bytes are coerced to
+ * JSON-friendly forms.
+ */
+async function exportJson(includeData: boolean): Promise<string> {
+  const database = await ensureDb();
+  const query = (sql: string): Row[] => {
+    const out: Row[] = [];
+    database.exec({ sql, rowMode: 'object', callback: (row) => void out.push(row as Row) });
+    return out;
+  };
+  const tables = query(
+    "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name;"
+  );
+  const virtualNames = tables
+    .filter((t) => /^\s*CREATE\s+VIRTUAL\s+TABLE/i.test(String(t.sql)))
+    .map((t) => String(t.name));
+  const isShadow = (name: string) =>
+    virtualNames.some((vt) => name !== vt && name.startsWith(vt + '_'));
+
+  const result: Record<string, Row[]> = {};
+  for (const t of tables) {
+    const name = String(t.name);
+    if (isShadow(name)) continue;
+    result[name] = includeData
+      ? query(`SELECT * FROM ${quoteId(name)};`)
+      : query(
+          `SELECT name, type, "notnull" AS "notnull", pk FROM pragma_table_info(${quoteValue(name)}) ORDER BY cid;`
+        );
+  }
+  return JSON.stringify(
+    result,
+    (_key, value) =>
+      typeof value === 'bigint'
+        ? Number(value)
+        : value instanceof Uint8Array
+          ? Array.from(value)
+          : value,
+    2
+  );
 }
 
 /** Table names, alphabetical (the DB viewer opens the first one). */
@@ -210,7 +276,13 @@ self.onmessage = async (event: MessageEvent<SqlRequest>) => {
         reply({ id: msg.id, ok: true, result: await tableData(msg.name) });
         break;
       case 'dump':
-        reply({ id: msg.id, ok: true, result: await dump() });
+        reply({ id: msg.id, ok: true, result: await dump(msg.includeData) });
+        break;
+      case 'serialize':
+        reply({ id: msg.id, ok: true, result: await serialize(msg.includeData) });
+        break;
+      case 'exportJson':
+        reply({ id: msg.id, ok: true, result: await exportJson(msg.includeData) });
         break;
     }
   } catch (err) {
