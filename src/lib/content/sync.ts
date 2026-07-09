@@ -13,8 +13,8 @@
  */
 import { getDB } from '../db/db';
 import { nowIso, put } from '../db/repo';
-import type { Chapters, Courses, Exercises, StoreName, SyncFields } from '../db/types';
-import type { ChapterContent, CourseContent, ExerciseContent } from './types';
+import type { Chapters, Courses, Lessons, StoreName, SyncFields } from '../db/types';
+import type { ChapterContent, CourseContent, LessonContent } from './types';
 
 /** Raw row fetch that sees tombstones — a re-enrollment must revive them. */
 async function rawGet<T extends SyncFields>(store: StoreName, slug: string): Promise<T | undefined> {
@@ -51,33 +51,34 @@ export async function syncChapter(content: ChapterContent): Promise<Chapters> {
     content_hash: content.content_hash,
     title: content.title,
     description: content.description,
-    exercises: content.exercises,
+    lessons: content.lessons,
   } as Chapters);
 }
 
-export async function syncExercise(content: ExerciseContent): Promise<Exercises> {
-  const existing = await rawGet<Exercises>('exercises', content.slug);
+export async function syncLesson(content: LessonContent): Promise<Lessons> {
+  const existing = await rawGet<Lessons>('lessons', content.slug);
   if (existing && !existing.deleted_at && existing.content_hash === content.content_hash) {
     return existing;
   }
-  return put<Exercises>('exercises', {
+  return put<Lessons>('lessons', {
     ...(existing ?? { ...newContentRow(content.slug), user_solution: null, started: null, completed: null }),
     deleted_at: null,
     content_hash: content.content_hash,
     title: content.title,
     description: content.description,
+    kind: content.kind,
     initial_sql: content.initial_sql,
     desired_state: content.desired_state,
-  } as Exercises);
+  } as Lessons);
 }
 
-/** Cache a whole course (course + chapters + exercises) — the enrollment copy. */
+/** Cache a whole course (course + chapters + lessons) — the enrollment copy. */
 export async function syncCourseBundle(bundle: {
   course: CourseContent;
   chapters: ChapterContent[];
-  exercises: ExerciseContent[];
+  lessons: LessonContent[];
 }): Promise<Courses> {
-  for (const exercise of bundle.exercises) await syncExercise(exercise);
+  for (const lesson of bundle.lessons) await syncLesson(lesson);
   for (const chapter of bundle.chapters) await syncChapter(chapter);
   return syncCourse(bundle.course);
 }

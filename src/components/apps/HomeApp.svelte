@@ -1,19 +1,19 @@
 <script lang="ts">
   /**
    * Homepage progress dashboard: completion stats, in-progress items with
-   * quick links, and recently completed exercises/chapters/courses.
-   * Everything is read from IndexedDB — links are reconstructed from the
-   * parent-holds-children arrays (courses.chapters[] / chapters.exercises[]).
+   * quick links, and recently completed lessons/chapters/courses.
+   * Everything is read from IndexedDB — slugs are path ids, so they double
+   * as the URL path under /courses/.
    *
    * Renders NOTHING when the visitor isn't enrolled in any course — the
    * static intro in index.astro is the whole homepage in that case.
    */
   import { onMount } from 'svelte';
   import { all } from '../../lib/db/repo';
-  import type { Chapters, Courses, Exercises } from '../../lib/db/types';
+  import type { Chapters, Courses, Lessons } from '../../lib/db/types';
 
   interface Item {
-    kind: 'exercise' | 'chapter' | 'course';
+    kind: 'lesson' | 'chapter' | 'course';
     title: string;
     context: string; // course / chapter it belongs to
     href: string;
@@ -21,59 +21,40 @@
   }
 
   let loading = $state(true);
-  let stats = $state({ exercises: 0, chapters: 0, courses: 0 });
+  let stats = $state({ lessons: 0, chapters: 0, courses: 0 });
   let inProgress = $state<Item[]>([]);
   let recentlyCompleted = $state<Item[]>([]);
   let hasAnything = $state(false);
 
   onMount(async () => {
-    const [courses, chapters, exercises] = await Promise.all([
+    const [courses, chapters, lessons] = await Promise.all([
       all<Courses>('courses'),
       all<Chapters>('chapters'),
-      all<Exercises>('exercises'),
+      all<Lessons>('lessons'),
     ]);
     hasAnything = courses.length > 0;
 
-    // slug → parent maps, from the ordered children arrays
-    const chapterOfExercise = new Map<string, Chapters>();
-    for (const chapter of chapters) {
-      for (const slug of chapter.exercises) chapterOfExercise.set(slug, chapter);
-    }
-    const courseOfChapter = new Map<string, Courses>();
-    for (const course of courses) {
-      for (const slug of course.chapters) courseOfChapter.set(slug, course);
-    }
-
-    const exerciseHref = (exercise: Exercises): string | null => {
-      const chapter = chapterOfExercise.get(exercise.id);
-      const course = chapter && courseOfChapter.get(chapter.id);
-      return course ? `/courses/${course.id}/${chapter.id}/${exercise.id}/` : null;
-    };
-    const chapterHref = (chapter: Chapters): string | null => {
-      const course = courseOfChapter.get(chapter.id);
-      return course ? `/courses/${course.id}/#${chapter.id}` : null;
-    };
+    const chapterById = new Map(chapters.map((c) => [c.id, c]));
+    // A lesson's chapter id is its own id minus the last path segment.
+    const chapterOfLesson = (lesson: Lessons) =>
+      chapterById.get(lesson.id.split('/').slice(0, -1).join('/'));
 
     stats = {
-      exercises: exercises.filter((e) => e.completed).length,
+      lessons: lessons.filter((l) => l.completed).length,
       chapters: chapters.filter((c) => c.completed).length,
       courses: courses.filter((c) => c.completed).length,
     };
 
     const progress: Item[] = [];
-    for (const exercise of exercises) {
-      if (exercise.started && !exercise.completed) {
-        const href = exerciseHref(exercise);
-        const chapter = chapterOfExercise.get(exercise.id);
-        if (href) {
-          progress.push({
-            kind: 'exercise',
-            title: exercise.title,
-            context: chapter?.title ?? '',
-            href,
-            when: exercise.started,
-          });
-        }
+    for (const lesson of lessons) {
+      if (lesson.started && !lesson.completed) {
+        progress.push({
+          kind: 'lesson',
+          title: lesson.title,
+          context: chapterOfLesson(lesson)?.title ?? '',
+          href: `/courses/${lesson.id}/`,
+          when: lesson.started,
+        });
       }
     }
     for (const course of courses) {
@@ -89,34 +70,27 @@
     }
     inProgress = progress.sort((a, b) => b.when.localeCompare(a.when)).slice(0, 6);
 
+    const courseById = new Map(courses.map((c) => [c.id, c]));
     const completedItems: Item[] = [];
-    for (const exercise of exercises) {
-      if (!exercise.completed) continue;
-      const href = exerciseHref(exercise);
-      const chapter = chapterOfExercise.get(exercise.id);
-      if (href) {
-        completedItems.push({
-          kind: 'exercise',
-          title: exercise.title,
-          context: chapter?.title ?? '',
-          href,
-          when: exercise.completed,
-        });
-      }
+    for (const lesson of lessons) {
+      if (!lesson.completed) continue;
+      completedItems.push({
+        kind: 'lesson',
+        title: lesson.title,
+        context: chapterOfLesson(lesson)?.title ?? '',
+        href: `/courses/${lesson.id}/`,
+        when: lesson.completed,
+      });
     }
     for (const chapter of chapters) {
       if (!chapter.completed) continue;
-      const href = chapterHref(chapter);
-      const course = courseOfChapter.get(chapter.id);
-      if (href) {
-        completedItems.push({
-          kind: 'chapter',
-          title: chapter.title,
-          context: course?.title ?? '',
-          href,
-          when: chapter.completed,
-        });
-      }
+      completedItems.push({
+        kind: 'chapter',
+        title: chapter.title,
+        context: courseById.get(chapter.id.split('/')[0]!)?.title ?? '',
+        href: `/courses/${chapter.id}/`,
+        when: chapter.completed,
+      });
     }
     for (const course of courses) {
       if (!course.completed) continue;
@@ -134,7 +108,7 @@
   });
 
   const kindLabel: Record<Item['kind'], string> = {
-    exercise: 'exercise',
+    lesson: 'lesson',
     chapter: 'chapter',
     course: 'course',
   };
@@ -144,8 +118,8 @@
   <div class="stack">
     <div class="tiles">
       <div class="tile">
-        <span class="count">{stats.exercises}</span>
-        <span class="label">exercises completed</span>
+        <span class="count">{stats.lessons}</span>
+        <span class="label">lessons completed</span>
       </div>
       <div class="tile">
         <span class="count">{stats.chapters}</span>

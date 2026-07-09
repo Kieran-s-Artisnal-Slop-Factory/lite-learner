@@ -11,7 +11,7 @@
     title: string;
     blurb: string;
     chapterCount: number;
-    exerciseCount: number;
+    lessonCount: number;
   }
 
   let { courses = [] }: { courses?: CourseCard[] } = $props();
@@ -42,7 +42,7 @@
           <span class="badge">enrolled</span>
         {/if}
       {/snippet}
-      <p class="muted counts">{course.chapterCount} chapters · {course.exerciseCount} exercises</p>
+      <p class="muted counts">{course.chapterCount} chapters · {course.lessonCount} lessons</p>
       <p class="blurb">{course.blurb}</p>
       <a class="btn btn-primary" href={`/courses/${course.slug}/`}>
         {row?.started && !row?.completed ? 'Continue →' : 'View course →'}

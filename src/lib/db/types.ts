@@ -7,11 +7,12 @@
  *  - per-visitor PROGRESS (started, completed, user_solution, …) that lives
  *    only in IndexedDB
  *
- * Content-backed rows are keyed by the content slug (`id` = slug), which is
- * stable across builds — that is what lets the content-hash check find the
- * right row to refresh.
+ * Content-backed rows are keyed by the content slug (`id` = slug) — the
+ * path-scoped id (`course/chapter/lesson`), stable across builds — that is
+ * what lets the content-hash check find the right row to refresh.
  */
 import type { DesiredState } from '../sql/comparator';
+import type { LessonKind } from '../content/types';
 
 /**
  * Bookkeeping fields on every entity. This app is offline-only, but the
@@ -41,15 +42,20 @@ export interface Courses extends SyncFields, CachedContent {
 }
 
 export interface Chapters extends SyncFields, CachedContent {
-  exercises: string[]; // ordered exercise slugs — array order is exercise order
+  lessons: string[]; // ordered lesson slugs — array order is lesson order
   // progress
   started: string | null; // UTC ISO 8601
   completed: string | null; // UTC ISO 8601
 }
 
-export interface Exercises extends SyncFields, CachedContent {
-  initial_sql: string;
-  desired_state: DesiredState;
+/**
+ * A lesson is an exercise (has desired_state → completed by a passing check)
+ * or a reading page (completed via "Mark as read").
+ */
+export interface Lessons extends SyncFields, CachedContent {
+  kind: LessonKind;
+  initial_sql?: string;
+  desired_state?: DesiredState;
   // progress
   user_solution: string | null; // last editor buffer; restored but never auto-run
   started: string | null; // UTC ISO 8601
@@ -62,7 +68,7 @@ export interface StoreIndex {
 }
 
 export const STORES: Record<string, { indexes: StoreIndex[] }> = {
-  exercises: { indexes: [] },
+  lessons: { indexes: [] },
   courses: { indexes: [] },
   chapters: { indexes: [] },
 };

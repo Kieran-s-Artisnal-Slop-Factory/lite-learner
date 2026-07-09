@@ -1,21 +1,21 @@
 <script lang="ts">
   /**
    * The interactive body of the course page: enroll / continue quick-access
-   * plus every chapter and its exercises with live progress. Enrolling copies
+   * plus every chapter and its lessons with live progress. Enrolling copies
    * the whole course bundle into IndexedDB via the content-hash sync; the
    * same sync refreshes stale cached content on every visit.
    */
   import { onMount } from 'svelte';
   import { get } from '../../lib/db/repo';
-  import type { Chapters, Courses, Exercises } from '../../lib/db/types';
-  import type { ChapterContent, CourseContent, ExerciseContent } from '../../lib/content/types';
+  import type { Chapters, Courses, Lessons } from '../../lib/db/types';
+  import type { ChapterContent, CourseContent, LessonContent } from '../../lib/content/types';
   import { syncCourseBundle } from '../../lib/content/sync';
   import Card from '../Card.svelte';
 
   interface Bundle {
     course: CourseContent;
     chapters: ChapterContent[];
-    exercises: ExerciseContent[];
+    lessons: LessonContent[];
   }
 
   let { bundle }: { bundle: Bundle } = $props();
@@ -23,16 +23,16 @@
   let loading = $state(true);
   let courseRow: Courses | null = $state(null);
   let chapterRows = $state<Map<string, Chapters>>(new Map());
-  let exerciseRows = $state<Map<string, Exercises>>(new Map());
+  let lessonRows = $state<Map<string, Lessons>>(new Map());
 
-  const exerciseBySlug = new Map(bundle.exercises.map((e) => [e.slug, e]));
+  const lessonBySlug = new Map(bundle.lessons.map((l) => [l.slug, l]));
   const enrolled = $derived(courseRow != null);
   const totalDone = $derived(
-    bundle.exercises.filter((e) => exerciseRows.get(e.slug)?.completed).length
+    bundle.lessons.filter((l) => lessonRows.get(l.slug)?.completed).length
   );
 
   /**
-   * Where "Continue" goes: the first incomplete exercise, preferring the
+   * Where "Continue" goes: the first incomplete lesson, preferring the
    * chapter the visitor was last in (course.current_chapter).
    */
   const continueTarget = $derived.by(() => {
@@ -41,21 +41,21 @@
     const currentIndex = ordered.findIndex((c) => c.slug === courseRow!.current_chapter);
     if (currentIndex > 0) ordered.unshift(...ordered.splice(currentIndex, 1));
     for (const chapter of ordered) {
-      for (const slug of chapter.exercises) {
-        if (!exerciseRows.get(slug)?.completed) {
-          const exercise = exerciseBySlug.get(slug);
-          if (exercise) return { chapter, exercise };
+      for (const slug of chapter.lessons) {
+        if (!lessonRows.get(slug)?.completed) {
+          const lesson = lessonBySlug.get(slug);
+          if (lesson) return { chapter, lesson };
         }
       }
     }
     return null;
   });
 
-  const exerciseHref = (chapter: ChapterContent, exerciseSlug: string) =>
-    `/courses/${bundle.course.slug}/${chapter.slug}/${exerciseSlug}/`;
+  // Slugs are path ids, so they double as the URL path under /courses/.
+  const href = (slug: string) => `/courses/${slug}/`;
 
   function chapterDone(chapter: ChapterContent): number {
-    return chapter.exercises.filter((slug) => exerciseRows.get(slug)?.completed).length;
+    return chapter.lessons.filter((slug) => lessonRows.get(slug)?.completed).length;
   }
 
   /** Split `text` on `inline code` spans so descriptions render backticks. */
@@ -66,17 +66,17 @@
   async function refresh() {
     courseRow = (await get<Courses>('courses', bundle.course.slug)) ?? null;
     const chapters = new Map<string, Chapters>();
-    const exercises = new Map<string, Exercises>();
+    const lessons = new Map<string, Lessons>();
     for (const chapter of bundle.chapters) {
       const chapterRow = await get<Chapters>('chapters', chapter.slug);
       if (chapterRow) chapters.set(chapter.slug, chapterRow);
-      for (const slug of chapter.exercises) {
-        const exerciseRow = await get<Exercises>('exercises', slug);
-        if (exerciseRow) exercises.set(slug, exerciseRow);
+      for (const slug of chapter.lessons) {
+        const lessonRow = await get<Lessons>('lessons', slug);
+        if (lessonRow) lessons.set(slug, lessonRow);
       }
     }
     chapterRows = chapters;
-    exerciseRows = exercises;
+    lessonRows = lessons;
   }
 
   async function enroll() {
@@ -90,10 +90,6 @@
     // nothing changed).
     if (courseRow) await enroll();
     loading = false;
-    // Chapter anchors only exist after hydration, so honor #chapter manually.
-    if (location.hash) {
-      document.querySelector(location.hash)?.scrollIntoView();
-    }
   });
 </script>
 
@@ -116,7 +112,7 @@
         <div>
           <p class="qa-title">✓ Course completed</p>
           <p class="muted qa-sub">
-            Finished {new Date(courseRow.completed).toLocaleDateString()} — every exercise stays
+            Finished {new Date(courseRow.completed).toLocaleDateString()} — every lesson stays
             open for experimenting.
           </p>
         </div>
@@ -128,11 +124,11 @@
             {courseRow?.started ? 'Pick up where you left off' : 'Ready when you are'}
           </p>
           <p class="muted qa-sub">
-            {continueTarget.chapter.title} · {totalDone}/{bundle.exercises.length} exercises done
+            {continueTarget.chapter.title} · {totalDone}/{bundle.lessons.length} lessons done
           </p>
         </div>
-        <a class="btn btn-primary" href={exerciseHref(continueTarget.chapter, continueTarget.exercise.slug)}>
-          {courseRow?.started ? 'Continue' : 'Start'}: {continueTarget.exercise.title} →
+        <a class="btn btn-primary" href={href(continueTarget.lesson.slug)}>
+          {courseRow?.started ? 'Continue' : 'Start'}: {continueTarget.lesson.title} →
         </a>
       </div>
     {/if}
@@ -140,44 +136,48 @@
     {#each bundle.chapters as chapter, i (chapter.slug)}
       {@const done = chapterDone(chapter)}
       {@const chapterRow = chapterRows.get(chapter.slug)}
-      <section id={chapter.slug}>
-        <Card title={`${i + 1}. ${chapter.title}`}>
-          {#snippet actions()}
-            {#if chapterRow?.completed}
-              <span class="badge badge-done">✓ complete</span>
-            {:else if done > 0}
-              <span class="badge badge-active">{done}/{chapter.exercises.length}</span>
-            {:else}
-              <span class="badge">{chapter.exercises.length} exercises</span>
+      <Card
+        title={`${i + 1}. ${chapter.title}`}
+        titleHref={enrolled ? href(chapter.slug) : undefined}
+      >
+        {#snippet actions()}
+          {#if chapterRow?.completed}
+            <span class="badge badge-done">✓ complete</span>
+          {:else if done > 0}
+            <span class="badge badge-active">{done}/{chapter.lessons.length}</span>
+          {:else}
+            <span class="badge">{chapter.lessons.length} lessons</span>
+          {/if}
+        {/snippet}
+        <p class="muted chapter-desc">
+          {#each inlineCode(chapter.description.trim()) as seg, j (j)}
+            {#if seg.code}<code>{seg.text}</code>{:else}{seg.text}{/if}
+          {/each}
+        </p>
+        <ol class="lesson-list">
+          {#each chapter.lessons as slug (slug)}
+            {@const lesson = lessonBySlug.get(slug)}
+            {@const lessonRow = lessonRows.get(slug)}
+            {#if lesson}
+              <li>
+                {#if enrolled}
+                  <a href={href(slug)}>{lesson.title}</a>
+                {:else}
+                  <span>{lesson.title}</span>
+                {/if}
+                {#if lesson.kind === 'reading'}
+                  <span class="badge">reading</span>
+                {/if}
+                {#if lessonRow?.completed}
+                  <span class="badge badge-done">✓</span>
+                {:else if lessonRow?.started}
+                  <span class="badge badge-active">in progress</span>
+                {/if}
+              </li>
             {/if}
-          {/snippet}
-          <p class="muted chapter-desc">
-            {#each inlineCode(chapter.description.trim()) as seg, j (j)}
-              {#if seg.code}<code>{seg.text}</code>{:else}{seg.text}{/if}
-            {/each}
-          </p>
-          <ol class="exercise-list">
-            {#each chapter.exercises as slug (slug)}
-              {@const exercise = exerciseBySlug.get(slug)}
-              {@const exerciseRow = exerciseRows.get(slug)}
-              {#if exercise}
-                <li>
-                  {#if enrolled}
-                    <a href={exerciseHref(chapter, slug)}>{exercise.title}</a>
-                  {:else}
-                    <span>{exercise.title}</span>
-                  {/if}
-                  {#if exerciseRow?.completed}
-                    <span class="badge badge-done">✓</span>
-                  {:else if exerciseRow?.started}
-                    <span class="badge badge-active">in progress</span>
-                  {/if}
-                </li>
-              {/if}
-            {/each}
-          </ol>
-        </Card>
-      </section>
+          {/each}
+        </ol>
+      </Card>
     {/each}
   </div>
 {/if}
@@ -205,7 +205,7 @@
     margin-bottom: var(--space-3);
   }
 
-  .exercise-list {
+  .lesson-list {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
@@ -213,15 +213,11 @@
     margin: 0;
   }
 
-  .exercise-list li {
+  .lesson-list li {
     display: list-item;
   }
 
-  .exercise-list .badge {
+  .lesson-list .badge {
     margin-left: var(--space-2);
-  }
-
-  section {
-    scroll-margin-top: calc(var(--navbar-height) + var(--space-4));
   }
 </style>

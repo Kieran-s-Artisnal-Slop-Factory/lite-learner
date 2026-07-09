@@ -3,10 +3,16 @@
  * collection entries into the JSON payloads pages embed for the client, each
  * stamped with a stable content_hash so the client cache can detect
  * re-authored content across deploys.
+ *
+ * This is also where the course→chapter→lesson wiring is resolved: parents
+ * list their children as relative leaf names (see content.config.ts), and
+ * loadCourseTrees() builds the full path ids, throwing on anything missing or
+ * orphaned so broken wiring fails the build.
  */
 import { createHash } from 'node:crypto';
-import { getCollection, getEntries, type CollectionEntry } from 'astro:content';
-import type { ChapterContent, CourseContent, ExerciseContent } from './types';
+import { getCollection, type CollectionEntry } from 'astro:content';
+import { resolveTrees } from './resolve';
+import type { ChapterContent, CourseContent, LessonContent } from './types';
 
 /** JSON.stringify with recursively sorted object keys, so hashing is stable. */
 function canonicalize(value: unknown): string {
@@ -31,13 +37,13 @@ export function contentHash(data: unknown, body: string): string {
 
 /**
  * A fully resolved course: entries for the course, its chapters (in course
- * order), and each chapter's exercises (in chapter order).
+ * order), and each chapter's lessons (in chapter order).
  */
 export interface CourseEntryTree {
   course: CollectionEntry<'courses'>;
   chapters: {
     chapter: CollectionEntry<'chapters'>;
-    exercises: CollectionEntry<'exercises'>[];
+    lessons: CollectionEntry<'lessons'>[];
   }[];
 }
 
@@ -45,46 +51,29 @@ export interface CourseEntryTree {
 export interface CourseBundle {
   course: CourseContent;
   chapters: ChapterContent[];
-  exercises: ExerciseContent[];
+  lessons: LessonContent[];
 }
 
 /**
- * Load every course and resolve its reference() arrays. Throwing on a missing
- * reference makes broken course/chapter/exercise wiring fail the build.
+ * Load every course and resolve the relative-leaf child arrays into full
+ * path ids. Throws on a listed child that doesn't exist AND on files no
+ * parent lists (orphans) — both would otherwise ship broken or invisible
+ * content.
  */
 export async function loadCourseTrees(): Promise<CourseEntryTree[]> {
-  const courseEntries = await getCollection('courses');
-  return Promise.all(
-    courseEntries.map(async (course) => {
-      const chapterEntries = await getEntries(course.data.chapters);
-      const missingChapter = chapterEntries.findIndex((c) => !c);
-      if (missingChapter !== -1) {
-        throw new Error(
-          `Course "${course.id}" references missing chapter "${course.data.chapters[missingChapter]!.id}"`
-        );
-      }
-      const chapters = await Promise.all(
-        chapterEntries.map(async (chapter) => {
-          const exercises = await getEntries(chapter.data.exercises);
-          const missing = exercises.findIndex((e) => !e);
-          if (missing !== -1) {
-            throw new Error(
-              `Chapter "${chapter.id}" references missing exercise "${chapter.data.exercises[missing]!.id}"`
-            );
-          }
-          return { chapter, exercises };
-        })
-      );
-      return { course, chapters };
-    })
-  );
+  const [courseEntries, chapterEntries, lessonEntries] = await Promise.all([
+    getCollection('courses'),
+    getCollection('chapters'),
+    getCollection('lessons'),
+  ]);
+  return resolveTrees(courseEntries, chapterEntries, lessonEntries);
 }
 
 export function toBundle(tree: CourseEntryTree): CourseBundle {
   return {
     course: courseContent(tree.course),
     chapters: tree.chapters.map(({ chapter }) => chapterContent(chapter)),
-    exercises: tree.chapters.flatMap(({ exercises }) => exercises.map(exerciseContent)),
+    lessons: tree.chapters.flatMap(({ lessons }) => lessons.map(lessonContent)),
   };
 }
 
@@ -95,7 +84,7 @@ export function courseContent(entry: CollectionEntry<'courses'>): CourseContent 
     content_hash: contentHash(entry.data, body),
     title: entry.data.title,
     description: body,
-    chapters: entry.data.chapters.map((ref) => ref.id),
+    chapters: entry.data.chapters.map((leaf) => `${entry.id}/${leaf}`),
   };
 }
 
@@ -106,17 +95,19 @@ export function chapterContent(entry: CollectionEntry<'chapters'>): ChapterConte
     content_hash: contentHash(entry.data, body),
     title: entry.data.title,
     description: body,
-    exercises: entry.data.exercises.map((ref) => ref.id),
+    lessons: entry.data.lessons.map((leaf) => `${entry.id}/${leaf}`),
   };
 }
 
-export function exerciseContent(entry: CollectionEntry<'exercises'>): ExerciseContent {
+export function lessonContent(entry: CollectionEntry<'lessons'>): LessonContent {
   const body = entry.body ?? '';
   return {
     slug: entry.id,
     content_hash: contentHash(entry.data, body),
     title: entry.data.title,
     description: body,
+    // Derived, never authored: a declared solution makes it an exercise.
+    kind: entry.data.desired_state ? 'exercise' : 'reading',
     initial_sql: entry.data.initial_sql,
     desired_state: entry.data.desired_state,
   };

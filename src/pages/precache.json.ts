@@ -25,9 +25,11 @@ export const GET: APIRoute = async () => {
   ];
   for (const tree of await loadCourseTrees()) {
     paths.push(`courses/${tree.course.id}/`);
-    for (const { chapter, exercises } of tree.chapters) {
-      for (const exercise of exercises) {
-        paths.push(`courses/${tree.course.id}/${chapter.id}/${exercise.id}/`);
+    for (const { chapter, lessons } of tree.chapters) {
+      // Ids are path-scoped, so they double as the route path.
+      paths.push(`courses/${chapter.id}/`);
+      for (const lesson of lessons) {
+        paths.push(`courses/${lesson.id}/`);
       }
     }
   }

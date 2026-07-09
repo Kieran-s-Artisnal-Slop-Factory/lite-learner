@@ -3,25 +3,26 @@
  * — "is complete" derives from `completed != null`.
  *
  * Rules:
- *  - opening an exercise stamps started on the exercise, its chapter, and its
+ *  - opening a lesson stamps started on the lesson, its chapter, and its
  *    course (first time only) and points course.current_chapter at the chapter
- *  - passing an exercise's solution check stamps exercise.completed, then
- *    cascades: chapter.completed when every exercise in it is complete,
- *    course.completed when every chapter is complete
+ *  - completing a lesson (a passing solution check for exercises, "Mark as
+ *    read" for reading lessons) stamps lesson.completed, then cascades:
+ *    chapter.completed when every lesson in it is complete, course.completed
+ *    when every chapter is complete
  */
 import { get, nowIso, put } from './db/repo';
-import type { Chapters, Courses, Exercises } from './db/types';
+import type { Chapters, Courses, Lessons } from './db/types';
 
-/** Plan step 5 of exercise load + course position bookkeeping. */
-export async function markExerciseOpened(
+/** Lesson-load bookkeeping: stamp started + course position. */
+export async function markLessonOpened(
   courseSlug: string,
   chapterSlug: string,
-  exercise: Exercises
-): Promise<Exercises> {
+  lesson: Lessons
+): Promise<Lessons> {
   const now = nowIso();
-  let updated = exercise;
-  if (!exercise.started) {
-    updated = await put<Exercises>('exercises', { ...exercise, started: now });
+  let updated = lesson;
+  if (!lesson.started) {
+    updated = await put<Lessons>('lessons', { ...lesson, started: now });
   }
   const chapter = await get<Chapters>('chapters', chapterSlug);
   if (chapter && !chapter.started) {
@@ -38,21 +39,25 @@ export async function markExerciseOpened(
   return updated;
 }
 
-/** Stamp a passed exercise and cascade chapter/course completion. */
-export async function markExerciseCompleted(
+/**
+ * Stamp a completed lesson and cascade chapter/course completion. Exercises
+ * arrive here from a passing check, reading lessons from "Mark as read" —
+ * the cascade treats every lesson uniformly.
+ */
+export async function markLessonCompleted(
   courseSlug: string,
   chapterSlug: string,
-  exercise: Exercises
-): Promise<Exercises> {
+  lesson: Lessons
+): Promise<Lessons> {
   const now = nowIso();
-  const updated = exercise.completed
-    ? exercise
-    : await put<Exercises>('exercises', { ...exercise, completed: now });
+  const updated = lesson.completed
+    ? lesson
+    : await put<Lessons>('lessons', { ...lesson, completed: now });
 
   const chapter = await get<Chapters>('chapters', chapterSlug);
   if (chapter && !chapter.completed) {
-    const siblings = await Promise.all(chapter.exercises.map((slug) => get<Exercises>('exercises', slug)));
-    if (siblings.every((e) => e?.completed)) {
+    const siblings = await Promise.all(chapter.lessons.map((slug) => get<Lessons>('lessons', slug)));
+    if (siblings.every((l) => l?.completed)) {
       await put<Chapters>('chapters', { ...chapter, completed: now });
       const course = await get<Courses>('courses', courseSlug);
       if (course && !course.completed) {

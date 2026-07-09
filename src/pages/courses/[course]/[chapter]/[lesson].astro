@@ -1,0 +1,140 @@
+---
+// Lesson page — statically rendered content beside the interactive island
+// (editor + engine for exercises and explorable readings, "Mark as read" for
+// prose lessons), with prev/next spanning the whole course. URL params are
+// the leaf segments of the path-scoped ids, so URLs stay
+// /courses/<course>/<chapter>/<lesson>/.
+import { render } from 'astro:content';
+import Layout from '../../../../layouts/Layout.astro';
+import LessonApp from '../../../../components/exercise/LessonApp.svelte';
+import {
+  chapterContent,
+  courseContent,
+  lessonContent,
+  loadCourseTrees,
+} from '../../../../lib/content/bundle';
+
+export async function getStaticPaths() {
+  const trees = await loadCourseTrees();
+  return trees.flatMap((tree) => {
+    // Flatten the course into one ordered list so prev/next walks across
+    // chapter boundaries.
+    const flat = tree.chapters.flatMap(({ chapter, lessons }) =>
+      lessons.map((lesson) => ({ chapter, lesson }))
+    );
+    return flat.map(({ chapter, lesson }, i) => ({
+      params: {
+        course: tree.course.id,
+        chapter: chapter.id.split('/').pop()!,
+        lesson: lesson.id.split('/').pop()!,
+      },
+      props: {
+        course: tree.course,
+        chapter,
+        lesson,
+        prev: flat[i - 1] ?? null,
+        next: flat[i + 1] ?? null,
+        position: {
+          index: chapter.data.lessons.findIndex((leaf) => `${chapter.id}/${leaf}` === lesson.id) + 1,
+          total: chapter.data.lessons.length,
+        },
+      },
+    }));
+  });
+}
+
+const { course, chapter, lesson, prev, next, position } = Astro.props;
+const { Content } = await render(lesson);
+const isExercise = lesson.data.desired_state !== undefined;
+// Prose-only readings have no workspace worth a second column.
+const hasDb = lesson.data.initial_sql !== undefined;
+const courseHref = `/courses/${course.id}/`;
+const chapterHref = `/courses/${chapter.id}/`;
+---
+
+<Layout title={lesson.data.title}>
+  <nav class="breadcrumbs">
+    <a href="/courses/">courses</a> /
+    <a href={courseHref}>{course.data.title}</a> /
+    <a href={chapterHref}>{chapter.data.title}</a>
+  </nav>
+  <div class="page-header">
+    <h1>{lesson.data.title}</h1>
+    <span class="muted">
+      {isExercise ? 'exercise' : 'reading'} · lesson {position.index}/{position.total} · {chapter.data.title}
+    </span>
+  </div>
+
+  <div class="lesson-layout" class:list={[{ 'prose-only': !hasDb }]}>
+    <div class="instructions">
+      <div class="prose">
+        <Content />
+      </div>
+    </div>
+
+    <div class="workspace">
+      <LessonApp
+        client:only="svelte"
+        course={courseContent(course)}
+        chapter={chapterContent(chapter)}
+        lesson={lessonContent(lesson)}
+      />
+    </div>
+  </div>
+
+  <nav class="pager">
+    {
+      prev ? (
+        <a class="btn" href={`/courses/${prev.lesson.id}/`}>
+          ← {prev.lesson.data.title}
+        </a>
+      ) : (
+        <a class="btn" href={courseHref}>
+          ← {course.data.title}
+        </a>
+      )
+    }
+    {
+      next ? (
+        <a class="btn" href={`/courses/${next.lesson.id}/`}>
+          {next.lesson.data.title} →
+        </a>
+      ) : (
+        <a class="btn" href={courseHref}>
+          Back to course →
+        </a>
+      )
+    }
+  </nav>
+</Layout>
+
+<style>
+  .lesson-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+    align-items: start;
+  }
+
+  @media (min-width: 64rem) {
+    .lesson-layout:not(.prose-only) {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    }
+
+    .lesson-layout:not(.prose-only) .instructions {
+      position: sticky;
+      top: calc(var(--navbar-height) + var(--space-4));
+      max-height: calc(100dvh - var(--navbar-height) - var(--space-6));
+      overflow-y: auto;
+      padding-right: var(--space-3);
+    }
+  }
+
+  .pager {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+    flex-wrap: wrap;
+  }
+</style>

@@ -3,10 +3,13 @@
 
   let {
     title = '',
+    titleHref,
     children,
     actions,
   }: {
     title?: string;
+    /** Renders the title as a link. */
+    titleHref?: string;
     children: Snippet;
     actions?: Snippet;
   } = $props();
@@ -15,7 +18,11 @@
 <section class="card">
   {#if title || actions}
     <header>
-      {#if title}<h3>{title}</h3>{/if}
+      {#if title && titleHref}
+        <h3><a href={titleHref}>{title}</a></h3>
+      {:else if title}
+        <h3>{title}</h3>
+      {/if}
       {#if actions}<div class="actions">{@render actions()}</div>{/if}
     </header>
   {/if}
@@ -45,6 +52,16 @@
   h3 {
     font-size: var(--font-size-base);
     font-weight: 700;
+  }
+
+  h3 a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  h3 a:hover {
+    color: var(--color-primary-strong);
+    text-decoration: underline;
   }
 
   .actions {

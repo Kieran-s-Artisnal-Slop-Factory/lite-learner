@@ -45,6 +45,23 @@ const MIGRATIONS: Migration[] = [
       db.createObjectStore('playground', { keyPath: 'id' });
     }
   },
+  // v4 — content restructure: `exercises` became `lessons` (a lesson without a
+  // desired_state is a reading page), and every content id changed from a flat
+  // slug to a path-scoped one (course/chapter/lesson). Old rows can't be
+  // matched to the new ids, so per-lesson progress is reset: the lessons store
+  // is created fresh, the exercises store dropped, and the remaining
+  // content-derived stores cleared. Rows are rebuilt from the embedded content
+  // by the sync layer on next visit.
+  (db, tx) => {
+    if (!db.objectStoreNames.contains('lessons')) {
+      db.createObjectStore('lessons', { keyPath: 'id' });
+    }
+    if (db.objectStoreNames.contains('exercises')) {
+      db.deleteObjectStore('exercises');
+    }
+    tx.objectStore('courses').clear();
+    tx.objectStore('chapters').clear();
+  },
 ];
 
 export const DB_VERSION = MIGRATIONS.length;

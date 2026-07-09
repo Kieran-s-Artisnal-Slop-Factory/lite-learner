@@ -1,0 +1,58 @@
+---
+// Chapter page — the chapter's index.md rendered as a real page, plus its
+// lesson list with live progress.
+import { render } from 'astro:content';
+import Layout from '../../../../layouts/Layout.astro';
+import ChapterApp from '../../../../components/course/ChapterApp.svelte';
+import {
+  chapterContent,
+  courseContent,
+  lessonContent,
+  loadCourseTrees,
+} from '../../../../lib/content/bundle';
+
+export async function getStaticPaths() {
+  const trees = await loadCourseTrees();
+  return trees.flatMap((tree) =>
+    tree.chapters.map(({ chapter, lessons }, i) => ({
+      params: { course: tree.course.id, chapter: chapter.id.split('/').pop()! },
+      props: { course: tree.course, chapter, lessons, position: { index: i + 1, total: tree.chapters.length } },
+    }))
+  );
+}
+
+const { course, chapter, lessons, position } = Astro.props;
+const { Content } = await render(chapter);
+const exerciseCount = lessons.filter((l) => l.data.desired_state !== undefined).length;
+const readingCount = lessons.length - exerciseCount;
+---
+
+<Layout title={chapter.data.title}>
+  <nav class="breadcrumbs">
+    <a href="/courses/">courses</a> /
+    <a href={`/courses/${course.id}/`}>{course.data.title}</a>
+  </nav>
+  <div class="page-header">
+    <h1>{chapter.data.title}</h1>
+    <span class="muted">
+      chapter {position.index}/{position.total} · {exerciseCount} exercises{readingCount > 0
+        ? ` · ${readingCount} readings`
+        : ''}
+    </span>
+  </div>
+  <div class="prose description">
+    <Content />
+  </div>
+  <ChapterApp
+    client:only="svelte"
+    course={courseContent(course)}
+    chapter={chapterContent(chapter)}
+    lessons={lessons.map(lessonContent)}
+  />
+</Layout>
+
+<style>
+  .description {
+    margin-bottom: var(--space-5);
+  }
+</style>

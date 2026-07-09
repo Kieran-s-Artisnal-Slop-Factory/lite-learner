@@ -10,7 +10,7 @@ const courses = trees.map((tree) => ({
   title: tree.course.data.title,
   blurb: (tree.course.body ?? '').trim().split(/\n\s*\n/)[0] ?? '',
   chapterCount: tree.chapters.length,
-  exerciseCount: tree.chapters.reduce((n, c) => n + c.exercises.length, 0),
+  lessonCount: tree.chapters.reduce((n, c) => n + c.lessons.length, 0),
 }));
 ---
 
