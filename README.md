@@ -1,16 +1,33 @@
 # Lite Learner
 
-Lite Learner is a statically generated interactive learning management system
-that teaches SQLite through in-browser courses and exercises, powered by
+Lite Learner is a statically generated, interactive learning management system
+that teaches SQLite entirely in the browser, powered by
 [sqlite-wasm](https://github.com/sqlite/sqlite-wasm). Courses are authored as
 markdown and baked into a static site at build time; every exercise runs
-against a real in-memory SQLite database. No server, no accounts, and the
-whole app works offline after the first visit.
+against a **real, in-memory SQLite database** in a Web Worker. There is no
+server and no account — a visitor's progress lives only in their browser, and
+the whole app works offline after the first visit.
 
-- **Authoring content**: see the [Instructor Guide](INSTRUCTOR_GUIDE.md) —
-  courses, chapters, and exercises are plain markdown under `src/content/`.
-- **Progress** (started/completed, current position, editor buffers) lives
-  only in the visitor's IndexedDB.
+Three courses ship with it — Beginner, Intermediate, and Advanced SQLite —
+covering everything from "what is a table" to triggers, CTEs, WAL mode, and
+query planning. A live version is available at [https://kieranwood.ca/lite-learner](https://kieranwood.ca/lite-learner)
+
+## How it works, in one breath
+
+Two kinds of data are kept deliberately separate:
+
+- **Content** — titles, prose, `initial_sql`, and `desired_state` solutions —
+  is authored as markdown, validated by Astro content collections (broken
+  wiring fails the build), and baked into the static bundle.
+- **Progress** — started/completed, current position, editor buffers — is
+  per-visitor and lives only in IndexedDB.
+
+When you enroll, a course's content is *copied* into IndexedDB next to your
+progress so the app works offline. Each page embeds a content hash; on load the
+client refreshes any stale cached content while always preserving progress. An
+exercise is checked by running its solution query against your live database
+and comparing the rows — so it grades **what your database looks like**, not
+the exact SQL you typed.
 
 ## Quickstart
 
@@ -18,102 +35,34 @@ Requires Node >= 22.12.
 
 ```sh
 npm install
-npm run dev      # http://localhost:4321
-npm test         # unit tests (vitest) — the solution comparator lives here
-npm run build    # static output in dist/
-npm run preview  # serve dist/ locally
+npm run dev      # dev server (Astro prints the URL)
+npm test         # unit tests (vitest) — the solution comparator + resolver
+npm run build    # static output in dist/  (also the content validation gate)
+npm run preview  # serve the built dist/ locally
 ```
-
-Development notes:
-
-- The service worker is disabled in dev (it would cache Vite module URLs);
-  test offline behavior against `npm run preview` instead.
-- A throwaway engine test page lives at `/spike` — handy when poking at the
-  SQLite worker without an exercise around it.
-- The site is an installable PWA (`public/manifest.webmanifest` + the service
-  worker). The PNG icons in `public/icons/` are generated — re-run
-  `node scripts/generate-icons.mjs` if the brand colors change.
 
 ## Deploy
 
-```sh
-npm run build  # static output in /dist
-```
-
-Host `dist/` anywhere static files can live: Netlify, GitHub Pages,
-Cloudflare Pages, or any web server. No runtime and no special headers
+`npm run build`, then host `dist/` on any static host — GitHub Pages, Netlify,
+Cloudflare Pages, or a plain file server. No runtime and no special headers are
 required (the SQLite engine is in-memory on purpose, sidestepping the
-COOP/COEP requirements of OPFS persistence). For subpath deploys (e.g.
-GitHub Pages under `/repo/`), set `base` in `astro.config.mjs` — the service
-worker derives every path from its registration scope, so offline precaching
-keeps working.
+COOP/COEP requirement of OPFS persistence).
 
-## Technical details
+For sub-path deploys (e.g. GitHub Pages under `/lite-learner/`), set `base` in
+`astro.config.mjs`. It's currently set to `/lite-learner`; every internal link
+goes through a `href()` helper and the service worker derives its paths from
+its own scope, so offline precaching keeps working under any base.
 
-Offline-only Astro + Svelte 5 app. Two kinds of data, kept deliberately
-separate:
+## Documentation
 
-- **Content** (titles, descriptions, `initial_sql`, `desired_state`
-  solutions) is authored as markdown, validated by Astro content collections
-  (broken cross-references fail the build), and baked into the static bundle.
-- **Progress** is per-visitor and lives only in IndexedDB — there is no
-  server and no network dependency.
-
-Content is copied into IndexedDB on enrollment so the app works offline, and
-kept fresh via a content hash: pages embed a sha256 of each entry at build
-time and the client reconciles on load — stale cached content is overwritten
-while progress fields are always preserved.
-
-### Source map
-
-- `src/content/` — the authored courses/chapters/exercises (markdown).
-- `src/content.config.ts` — collection schemas; `reference()` arrays define
-  chapter/exercise ordering (array order *is* the order).
-- `src/lib/sql/` — the exercise engine: SQLite WASM in a Web Worker
-  (`worker.ts`, so runaway queries never freeze the UI), a promise client
-  (`client.ts`), and the solution comparator (`comparator.ts` — pure,
-  unit-tested, expected-value-driven coercion rules).
-- `src/lib/content/` — build-time content-bundle emit (`bundle.ts`) +
-  client-side cache sync (`sync.ts`): the content-hash flow above.
-- `src/lib/progress.ts` — progress stamping; completing an exercise cascades
-  to chapter/course completion. Completion is always a nullable `completed`
-  timestamp — booleans are derived, never stored.
-- `src/lib/db/` — IndexedDB plumbing: entity types (`types.ts`), append-only
-  migrations (`db.ts`), tombstone-aware CRUD (`repo.ts`), JSON backup
-  export/import (`export.ts`). Content-backed rows are keyed by content slug.
-- `src/components/` — Svelte 5 (runes) islands mounted from thin Astro pages
-  with `client:only="svelte"`; the exercise editor is CodeMirror 6 with SQL
-  syntax highlighting.
-- `src/styles/theme.css` — every design token (gruvbox palette → semantic
-  colors → editor/syntax colors). Re-theming means editing this one file.
-- `public/sw.js` — offline support: precaches every page from the generated
-  `/precache.json` manifest plus the crawled asset graph; network-first for
-  pages, stale-while-revalidate for assets.
-
-### Conventions worth knowing
-
-- SQL validity errors come from `prepare()`-ing statements in SQLite WASM and
-  surfacing the thrown error — the engine is the source of truth, not an
-  editor-side linter.
-- Exercise loads never auto-run a restored editor buffer (a single buffer
-  can't reproduce accumulated DB state); the UI shows a "re-run your
-  statements" banner instead.
-- Every entity carries bookkeeping fields (`id`, `updated_at`, `deleted_at`,
-  `server_seq`) that power soft deletes and keep the door open to adding a
-  sync backend later without a data migration.
+- **[Course Development Guide](Course%20Development%20Guide.md)** — how to
+  author courses, chapters, and lessons; writing and debugging `desired_state`
+  solution checks, including introspection tricks for tougher cases.
+- **[Development Guide](Development%20Guide.md)** — system architecture, project
+  layout, and how the editor, offline support, and solution validation are
+  built.
 
 ## Backups
 
-The only copy of a visitor's progress is the browser it was created in. Use
-Settings → Backup to export/import everything as one JSON file.
-
-## Evolving the schema
-
-The schema lives in two places that must change together:
-
-1. `src/lib/db/types.ts` — entity interfaces + store map.
-2. A new migration appended in `src/lib/db/db.ts` (never edit a
-   shipped migration).
-
-Versions are pinned to ranges proven together (Astro 7 / Svelte 5 / idb 8);
-major upgrades may change generated-code assumptions.
+The only copy of a visitor's progress is the browser it was created in.
+Settings → Backup exports/imports everything as one JSON file.
