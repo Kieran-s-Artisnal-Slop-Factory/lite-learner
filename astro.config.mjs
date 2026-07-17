@@ -1,12 +1,19 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
+import mermaid from 'astro-mermaid';
 
 import svelte from '@astrojs/svelte';
 
 // https://astro.build/config
 export default defineConfig({
   base:"/lite-learner",
-  integrations: [svelte()],
+  integrations: [
+    svelte(),
+    mermaid({
+      theme: 'dark',
+      autoTheme: true
+    })
+  ],
   markdown: {
     // Dual gruvbox themes; defaultColor:false emits --shiki-light/--shiki-dark
     // variables and Layout.astro's CSS picks one based on the active scheme.
