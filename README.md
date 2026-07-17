@@ -8,9 +8,11 @@ against a **real, in-memory SQLite database** in a Web Worker. There is no
 server and no account — a visitor's progress lives only in their browser, and
 the whole app works offline after the first visit.
 
-Three courses ship with it — Beginner, Intermediate, and Advanced SQLite —
-covering everything from "what is a table" to triggers, CTEs, WAL mode, and
-query planning. A live version is available at [https://kieranwood.ca/lite-learner](https://kieranwood.ca/lite-learner)
+Four courses ship with it — a database-agnostic Introduction to Databases
+(reading-only, for non-technical learners), then Beginner, Intermediate, and
+Advanced SQLite — covering everything from "what is a database" to triggers,
+CTEs, WAL mode, and query planning. A live version is available at
+[https://kieranwood.ca/lite-learner](https://kieranwood.ca/lite-learner)
 
 ## How it works, in one breath
 

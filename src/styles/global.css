@@ -271,7 +271,8 @@ main.page {
 
 /* Rendered markdown (course/chapter/exercise descriptions) */
 .prose {
-  max-width: 70ch;
+  margin:0 auto;
+  max-width: 95ch;
 }
 
 .prose p,
@@ -284,9 +285,43 @@ main.page {
   padding: var(--space-3);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
-  border-left: 4px solid var(--gb-bg3);
+  border-left: 4px solid var(--pal-bg3);
   overflow-x: auto;
   font-size: var(--font-size-sm);
+}
+
+/* Markdown tables (GFM) — align with .data-table without needing a class. */
+.prose table {
+  border-collapse: collapse;
+  margin-block: var(--space-4);
+  font-size: var(--font-size-sm);
+  display: block; /* lets wide tables scroll instead of breaking the column */
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid var(--border-color);
+  padding: var(--space-2) var(--space-3);
+  vertical-align: top;
+}
+
+.prose thead th {
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted-color);
+  background: var(--surface-raised-color);
+}
+
+.prose blockquote {
+  margin-block: var(--space-3);
+  margin-inline: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 4px solid var(--pal-bg3);
+  background: var(--surface-color);
+  color: var(--text-muted-color);
 }
 
 /*
@@ -320,11 +355,22 @@ main.page {
 .prose h2 {
   font-size: var(--font-size-lg);
   margin-top: var(--space-5);
-  color: var(--gb-yellow);
+  color: var(--pal-yellow);
 }
 
 .prose h2::before {
   content: '## ';
+  color: var(--text-muted-color);
+}
+
+.prose h3 {
+  font-size: var(--font-size-base);
+  margin-top: var(--space-4);
+  color: var(--pal-aqua);
+}
+
+.prose h3::before {
+  content: '### ';
   color: var(--text-muted-color);
 }
 

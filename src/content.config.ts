@@ -7,14 +7,16 @@
  * depth:
  *
  *   src/content/courses/
- *     sqlite-basics/                     ← course folder
+ *     N.sqlite-basics/                   ← course folder (N. orders the listing)
  *       index.md                         ← the COURSE
  *       what-is-a-database/              ← chapter folder
  *         index.md                       ← the CHAPTER
  *         count-rows.md                  ← a LESSON
  *
  * Ids are path-scoped (`sqlite-basics/what-is-a-database/count-rows`), so leaf
- * names only need to be unique within their folder.
+ * names only need to be unique within their folder. Numeric `N.` folder
+ * prefixes order the course listing but are stripped from ids (and therefore
+ * URLs and progress keys), so renumbering courses is always safe.
  *
  * Ordering lives in the parent's frontmatter: a course lists its chapter
  * folder names in `chapters:`, a chapter lists its lesson file names (minus

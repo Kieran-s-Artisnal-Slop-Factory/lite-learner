@@ -24,8 +24,11 @@ chapter a sub-folder, and each lesson a markdown file inside a chapter. The
 
 ```
 src/content/courses/
-  sqlite-basics/                    ← a COURSE
+  1.intro-to-databases/             ← a COURSE ("1." orders the listing)
     index.md                        ← the course page
+    ...
+  2.sqlite-basics/                  ← the next course
+    index.md
     what-is-a-database/             ← a CHAPTER
       index.md                      ← the chapter page
       tables-rows-and-columns.md    ← a LESSON
@@ -34,9 +37,6 @@ src/content/courses/
       index.md
       select-everything.md
       ...
-  intermediate-sqlite/
-    index.md
-    ...
 ```
 
 Lesson files can be named anything (except `index`, which is reserved for the
@@ -48,6 +48,18 @@ the path is also the URL (`/courses/sqlite-basics/beginner-project/schema/`).
 
 Moving or deleting a chapter is a folder operation — everything it owns goes
 with it.
+
+### Course order: numeric folder prefixes
+
+Courses have no parent to list them, so the **course listing follows the
+folder name** (natural sort). Prefix course folders with `N.` to put them in
+teaching order: `1.intro-to-databases`, `2.sqlite-basics`, ….
+
+The prefix is **stripped from the id** — the URL is
+`/courses/intro-to-databases/` and learner progress is keyed without it — so
+renumbering courses later never breaks links or wipes progress. One caveat:
+because prefixes vanish from ids, two folders whose names differ only by
+prefix (`1.foo` and `2.foo`) would collide; don't do that.
 
 ## Ordering: the parent lists its children
 
@@ -338,8 +350,23 @@ working against their cached copy.
 
 ## The shipped courses
 
-Three courses ship in `src/content/courses/`. Extend or replace them freely —
+Four courses ship in `src/content/courses/`. Extend or replace them freely —
 this is the intended progression:
+
+### Introduction to Databases (`intro-to-databases`)
+
+A reading-only, **database-agnostic** primer for people without a technical
+background — no exercises, every lesson is a "Mark as read" page. It mentions
+SQLite but isn't about it, so it can be reused in front of future courses
+about PostgreSQL or other databases.
+
+1. What is a Database? — spreadsheets → tables, a simple database, relations
+   (relational vs non-relational), the types of databases (relational,
+   columnar, key-value, document, graph, vector, time-series)
+2. Why use Databases? — where spreadsheets stop scaling, joins (ask for
+   exactly what you need), multi-user security & concurrency, query languages
+3. History of Databases — the first navigational systems (IMS, CODASYL),
+   Codd and the relational model, the NoSQL movement and today's landscape
 
 ### Beginner SQLite (`sqlite-basics`)
 

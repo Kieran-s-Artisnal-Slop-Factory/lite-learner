@@ -26,6 +26,13 @@ const { course, chapter, lessons, position } = Astro.props;
 const { Content } = await render(chapter);
 const exerciseCount = lessons.filter((l) => l.data.desired_state !== undefined).length;
 const readingCount = lessons.length - exerciseCount;
+// Only mention the kinds a chapter actually has ("4 readings", not "0 exercises · 4 readings").
+const counts = [
+  exerciseCount > 0 ? `${exerciseCount} exercise${exerciseCount === 1 ? '' : 's'}` : null,
+  readingCount > 0 ? `${readingCount} reading${readingCount === 1 ? '' : 's'}` : null,
+]
+  .filter(Boolean)
+  .join(' · ');
 ---
 
 <Layout title={chapter.data.title}>
@@ -36,9 +43,7 @@ const readingCount = lessons.length - exerciseCount;
   <div class="page-header">
     <h1>{chapter.data.title}</h1>
     <span class="muted">
-      chapter {position.index}/{position.total} · {exerciseCount} exercises{readingCount > 0
-        ? ` · ${readingCount} readings`
-        : ''}
+      chapter {position.index}/{position.total}{counts ? ` · ${counts}` : ''}
     </span>
   </div>
   <div class="prose description">

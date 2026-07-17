@@ -4,9 +4,22 @@
  * relative-leaf → full-id resolver used by the bundler.
  */
 
-/** Entry path → id: strip `.md`, collapse `<dir>/index` to `<dir>`. */
+/**
+ * Entry path → id: strip `.md`, collapse `<dir>/index` to `<dir>`, and drop
+ * numeric `N.` ordering prefixes from every segment (`1.sqlite-basics` →
+ * `sqlite-basics`). The prefixes order folders on disk and in the course
+ * listing but stay out of URLs and progress keys — so renumbering a course
+ * never breaks links or wipes progress. (Two siblings whose names differ only
+ * by prefix would collide to one id — don't do that.)
+ */
 export function idFromEntry(entry: string): string {
-  return entry.replace(/\\/g, '/').replace(/\.md$/, '').replace(/\/index$/, '');
+  return entry
+    .replace(/\\/g, '/')
+    .replace(/\.md$/, '')
+    .replace(/\/index$/, '')
+    .split('/')
+    .map((segment) => segment.replace(/^\d+\./, ''))
+    .join('/');
 }
 
 interface CourseLike {

@@ -209,7 +209,7 @@
   .section-title {
     font-size: var(--font-size-lg);
     margin-bottom: var(--space-3);
-    color: var(--gb-yellow);
+    color: var(--pal-yellow);
   }
 
   .section-title::before {

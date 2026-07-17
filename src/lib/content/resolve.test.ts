@@ -23,6 +23,19 @@ describe('idFromEntry', () => {
   it('only collapses a trailing /index, not a lesson named index-something', () => {
     expect(idFromEntry('c/ch/index-tuning.md')).toBe('c/ch/index-tuning');
   });
+
+  it('strips numeric N. ordering prefixes from every segment', () => {
+    expect(idFromEntry('1.intro-to-databases/index.md')).toBe('intro-to-databases');
+    expect(idFromEntry('2.sqlite-basics/what-is-a-database/count-rows.md')).toBe(
+      'sqlite-basics/what-is-a-database/count-rows'
+    );
+    expect(idFromEntry('c/1.first-chapter/index.md')).toBe('c/first-chapter');
+  });
+
+  it('leaves digits alone unless they form an N. prefix', () => {
+    expect(idFromEntry('c/ch/2024-review.md')).toBe('c/ch/2024-review');
+    expect(idFromEntry('c/ch/top-10.md')).toBe('c/ch/top-10');
+  });
 });
 
 describe('resolveTrees', () => {

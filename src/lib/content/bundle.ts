@@ -66,6 +66,12 @@ export async function loadCourseTrees(): Promise<CourseEntryTree[]> {
     getCollection('chapters'),
     getCollection('lessons'),
   ]);
+  // Courses have no parent to list them, so listing order follows the folder
+  // name — numeric `N.` prefixes (stripped from ids by idFromEntry) put them
+  // in teaching order. Natural sort so `10.` lands after `9.`.
+  courseEntries.sort((a, b) =>
+    (a.filePath ?? a.id).localeCompare(b.filePath ?? b.id, undefined, { numeric: true })
+  );
   return resolveTrees(courseEntries, chapterEntries, lessonEntries);
 }
 
