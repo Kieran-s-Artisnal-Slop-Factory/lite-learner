@@ -194,7 +194,6 @@ automatically. Examples: [InfluxDB](https://www.influxdata.com/products/influxdb
 
 The debate around approach to use, and when is quite lively, and highly situational. Some people swear by a set of specialized databases, for others entire [movements](https://youjustneedpostgres.com/) have been created around just using relational databases with pluigns to meet your every need (with some [passionate believers](https://www.justfuckingusepostgres.com/)).
 
-If in doubt, start relational: it's the general-purpose tool the rest were
-specialized *away* from, and the one whose skills transfer everywhere. That's
-exactly where this course goes next — but first, a fair question: why bother
+If in doubt, start relational. Relational is the general-purpose tool the rest were
+specialized *away* from, and the one whose skills transfer everywhere. But, you might be thinking *sure **A** spreadsheet* doesn't work, but why bother
 with any of this instead of a folder full of spreadsheets?

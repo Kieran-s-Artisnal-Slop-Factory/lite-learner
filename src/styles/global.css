@@ -324,6 +324,12 @@ main.page {
   color: var(--text-muted-color);
 }
 
+.prose img{
+  object-fit: contain;
+  width: fit-content;
+  height: fit-content;
+}
+
 /*
  * Shiki dual-theme switching. Code blocks are highlighted with gruvbox
  * light/dark at build time (astro.config shikiConfig, defaultColor: false) —
