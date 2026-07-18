@@ -48,7 +48,7 @@ People use "database" loosely for two related things:
 
 1. **The data itself**; the organized collection of tables.
 2. **The software that manages it**; properly called a *database management
-   system* ([[dbms|DBMS]]). [SQLite](https://sqlite.org/index.html), [PostgreSQL](https://www.postgresql.org/), [MySQL](https://www.mysql.com/), [TigerBeetle](https://tigerbeetle.com/), [DuckDB](https://duckdb.org/) and [MongoDB](https://www.mongodb.com/) are all database management systems.
+   system* ([[dbms|DBMS]]). [[sqlite|SQLite]], [[postgresql|PostgreSQL]], [[mysql|MySQL]], [[tigerbeetle|TigerBeetle]], [[duckdb|DuckDB]] and [[mongodb|MongoDB]] are all database management systems.
 
 In everyday speech (and in this course) "database" covers both, and the
 context makes it clear which one is meant.

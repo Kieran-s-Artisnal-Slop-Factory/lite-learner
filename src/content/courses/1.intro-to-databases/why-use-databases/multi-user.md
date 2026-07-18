@@ -18,7 +18,7 @@ A database lets you create separate accounts and grant each one exactly the powe
 
 This is called the **[[principle-of-least-privilege|principle of least privilege]]**, every person and program gets the minimum access needed to do its job. It limits honest mistakes and contains break-ins: a compromised dashboard that can only read public product data is an annoyance, not a catastrophe. Databases can also log who changed what and when, which spreadsheet history only gestures at.
 
-How much of this you get varies by system: server databases like PostgreSQL have rich account systems, while an embedded database like SQLite leans on the app around it, but the *model* of least privilege is universal.
+How much of this you get varies by system: server databases like [[postgresql|PostgreSQL]] have rich account systems, while an embedded database like [[sqlite|SQLite]] leans on the app around it, but the *model* of least privilege is universal.
 
 ## Many hands, no stepped-on toes
 

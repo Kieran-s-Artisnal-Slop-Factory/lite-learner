@@ -32,8 +32,8 @@ automatically up to date. An empty `borrowed_by` simply means the book is on
 the shelf.
 
 This pointing-between-tables is a **[[relationship|relationship]]**, and databases built
-around tables connected this way are called **[[relational-database|relational databases]]**. SQLite,
-PostgreSQL, and MySQL are all relational, and they are the kind you'll meet
+around tables connected this way are called **[[relational-database|relational databases]]**. [[sqlite|SQLite]],
+[[postgresql|PostgreSQL]], and [[mysql|MySQL]] are all relational, and they are the kind you'll meet
 most often.
 
 > "relational" actually comes from *relation*, the mathematical word for a table itself, not from "relationships". Some older textbooks (especially pure theory ones), and references might call a **table** a relation, but it's not common anymore.

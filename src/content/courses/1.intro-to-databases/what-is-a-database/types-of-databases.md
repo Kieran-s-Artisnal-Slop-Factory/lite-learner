@@ -9,19 +9,19 @@ Software today is complex, and stores various kinds of data, with various diffee
 The classic: tables of rows and columns, connected by ids, with rules that
 keep data honest. Stored row-by-row, which makes the everyday work of apps fast, 
 look up *this* order, update *that* member. This is the default choice
-for most software: [SQLite](https://sqlite.org/index.html), [PostgreSQL](https://www.postgresql.org/), [MySQL](https://www.mysql.com/) are the popular names.
+for most software: [[sqlite|SQLite]], [[postgresql|PostgreSQL]], [[mysql|MySQL]] are the popular names.
 
 ## Columnar (column store)
 
 The same tables, stored column-by-column instead. That sounds like a
 technicality, but it changes everything for some workloads. Adding up one column across a
 billion rows only has to read *that column*, not a billion whole rows.
-[[columnar-database|Columnar databases]] power analytics and reporting. For when you want to know  "average order value per month for five years". Not impossible with other databases, but if this is your main workload, column-store's are faster than most alternatives, at the cost of being slower to update individual rows. Examples include : [DuckDB](https://duckdb.org/), [ClickHouse](https://clickhouse.com/clickhouse), [Amazon Redshift](https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html).
+[[columnar-database|Columnar databases]] power analytics and reporting. For when you want to know  "average order value per month for five years". Not impossible with other databases, but if this is your main workload, column-store's are faster than most alternatives, at the cost of being slower to update individual rows. Examples include : [[duckdb|DuckDB]], [[clickhouse|ClickHouse]], [[redshift|Amazon Redshift]].
 
 ## Key-value
 
 The simplest possible idea: a giant lookup of *[[key-value-store|key → value]]*. Imagine you want to store data about where a bunch of cars are for a valet service. A person is given the ticket `2204`, and the car is parked in `A26`. You give the database `2204:A26`, when they come back at the end of the night, you ask it for `2204` and it gives you back `A26`. No tables, no relationships, no questions other than "what's under this
-key?". So, why? Speed. It's best suited for short lived data that needs ot be accessed fast. Used for caches, user sessions, and feature flags. Examples: [Worker KV](https://developers.cloudflare.com/kv/), [Redis](https://redis.io/), [Amazon DynamoDB](https://aws.amazon.com/dynamodb/).
+key?". So, why? Speed. It's best suited for short lived data that needs ot be accessed fast. Used for caches, user sessions, and feature flags. Examples: [[workers-kv|Worker KV]], [[redis|Redis]], [[dynamodb|Amazon DynamoDB]].
 
 ## Document
 
@@ -35,7 +35,7 @@ Each record is a self-contained **[[document-database|document]]** (usually JSON
 }
 ```
 
-All of a member's data in one nested bundle. There's no fixed list of columns, so records can vary in shape. Flexible for fast-changing data, at the price of duplication and weaker cross-record guarantees. Examples: [MongoDB](https://www.mongodb.com/), [CouchDB](https://couchdb.apache.org/).
+All of a member's data in one nested bundle. There's no fixed list of columns, so records can vary in shape. Flexible for fast-changing data, at the price of duplication and weaker cross-record guarantees. Examples: [[mongodb|MongoDB]], [[couchdb|CouchDB]].
 
 ## Graph
 
@@ -73,7 +73,7 @@ Alice -->|Posted| Photo
 Bob -->|Liked| Photo
 ```
 
-Are built to answer "friend-of-a-friend"-style questions that require hopping many links. These are the kind of query that gets awkward in tables. Examples: [Neo4j](https://neo4j.com/), [Memgraph](https://memgraph.com/).
+Are built to answer "friend-of-a-friend"-style questions that require hopping many links. These are the kind of query that gets awkward in tables. Examples: [[neo4j|Neo4j]], [[memgraph|Memgraph]].
 
 ## Vector
 
@@ -172,13 +172,13 @@ and the query would look something like this:
               │               ● Italian Recipes
 ```
 
-A [[vector-database|vector database]] stores those lists and answers "what's most *similar* to this?". They power features that were traditionally difficult, and highly specialized like semantic search and retrieval for AI assistants. Examples: [Pinecone](https://www.pinecone.io/), [Qdrant](https://qdrant.tech/), and the [pgvector](https://github.com/pgvector/pgvector) extension for [PostgreSQL](https://www.postgresql.org/).
+A [[vector-database|vector database]] stores those lists and answers "what's most *similar* to this?". They power features that were traditionally difficult, and highly specialized like semantic search and retrieval for AI assistants. Examples: [[pinecone|Pinecone]], [[qdrant|Qdrant]], and the [[pgvector]] extension for [[postgresql|PostgreSQL]].
 
 ## [[time-series-database|Time-series]]
 
 Built for endless streams of timestamped measurements, for things like server temperatures, heart rates, stock ticks. Optimized for "append constantly, query by time
 range, summarize per minute/hour/day", with old data compressed or expired
-automatically. Examples: [InfluxDB](https://www.influxdata.com/products/influxdb-overview/), [TimescaleDB](https://timescaledb.org/).
+automatically. Examples: [[influxdb|InfluxDB]], [[timescaledb|TimescaleDB]].
 
 ## Side by side
 

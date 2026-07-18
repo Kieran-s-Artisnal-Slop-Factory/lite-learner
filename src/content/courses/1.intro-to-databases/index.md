@@ -11,7 +11,7 @@ databases actually are, why so much of the world runs on them, and how we got
 here — no code to write, no technical background required.
 
 The ideas in this course are deliberately general: everything you'll read
-applies whether the database is SQLite, PostgreSQL, MySQL, MongoDB, or
+applies whether the database is [[sqlite|SQLite]], [[postgresql|PostgreSQL]], [[mysql|MySQL]], [[mongodb|MongoDB]], or
 something else entirely. By the end you'll know what a table is, what makes
 data "relational", which kinds of databases exist and when each shines, and
 enough history to understand why the tools look the way they do today.

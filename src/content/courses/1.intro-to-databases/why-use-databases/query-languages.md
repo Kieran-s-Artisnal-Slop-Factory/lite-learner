@@ -20,11 +20,11 @@ Even never having seen SQL, you can nearly read that aloud: *names and emails of
 
 ## Learn once, use everywhere
 
-SQL was standardized in 1986 and is the de-facto (with minor differences) language used by practically every relational database: [SQLite](https://sqlite.org/index.html), [PostgreSQL](https://www.postgresql.org/), [MySQL](https://www.mysql.com/), [SQL Server](https://www.microsoft.com/en/sql-server), [DuckDB](https://duckdb.org/), etc. The core of asking with `SELECT`, adding with `INSERT`, changing with `UPDATE`, transfers almost untouched between them.
+SQL was standardized in 1986 and is the de-facto (with minor differences) language used by practically every relational database: [[sqlite|SQLite]], [[postgresql|PostgreSQL]], [[mysql|MySQL]], [[sql-server|SQL Server]], [[duckdb|DuckDB]], etc. The core of asking with `SELECT`, adding with `INSERT`, changing with `UPDATE`, transfers almost untouched between them.
 
-The skill's reach keeps growing. Analytics warehouses ([BigQuery](https://cloud.google.com/bigquery), [Redshift](https://docs.aws.amazon.com/redshift/)), streaming systems, even many originally "NoSQL" products have added SQL or SQL-like languages, because everyone already speaks it. Fifty years of tools, books, and job postings agree: SQL may be the single most portable skill in software.
+The skill's reach keeps growing. Analytics warehouses ([[bigquery|BigQuery]], [[redshift|Redshift]]), streaming systems, even many originally "NoSQL" products have added SQL or SQL-like languages, because everyone already speaks it. Fifty years of tools, books, and job postings agree: SQL may be the single most portable skill in software.
 
-Non-relational databases have their own languages often. Document databases like MongoDB use API-style queries (e.g. `db.collection.find({ age: { $gt: 18 } });`), graph databases use languages like Cypher (`MATCH (p:Person {name: "Keanu Reeves"}) RETURN p.name AS name, p.born AS born`), but SQL remains the king, and its concepts (filtering, combining, aggregating) echo through all of them.
+Non-relational databases have their own languages often. Document databases like [[mongodb|MongoDB]] use API-style queries (e.g. `db.collection.find({ age: { $gt: 18 } });`), graph databases use languages like Cypher (`MATCH (p:Person {name: "Keanu Reeves"}) RETURN p.name AS name, p.born AS born`), but SQL remains the king, and its concepts (filtering, combining, aggregating) echo through all of them.
 
 ## Questions stop being projects
 
