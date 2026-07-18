@@ -3,10 +3,16 @@ import { defineConfig } from 'astro/config';
 import mermaid from 'astro-mermaid';
 
 import svelte from '@astrojs/svelte';
+import { satteri } from '@astrojs/markdown-satteri';
+import { glossaryMdastPlugin } from './src/lib/glossary/satteri-glossary.mjs';
+
+// Serving sub-path. Passed to the glossary plugin so baked [[term]] links
+// resolve correctly under it (mirrors lib/paths.ts, which markdown can't reach).
+const base = '/lite-learner';
 
 // https://astro.build/config
 export default defineConfig({
-  base:"/lite-learner",
+  base:base,
   integrations: [
     svelte(),
     mermaid({
@@ -21,6 +27,10 @@ export default defineConfig({
       themes: { light: 'gruvbox-light-medium', dark: 'gruvbox-dark-medium' },
       defaultColor: false,
     },
+    // [[term]] / [[term|display]] → glossary popup links, via a Sätteri mdast
+    // plugin (Astro 7's default processor). The plugin reads src/content/glossary
+    // at config-load time, so restart the dev server after adding/renaming a term.
+    processor: satteri({ mdastPlugins: [glossaryMdastPlugin({ base })] }),
   },
   vite: {
     // Per the sqlite-wasm docs: keep Vite from pre-bundling the WASM loader,

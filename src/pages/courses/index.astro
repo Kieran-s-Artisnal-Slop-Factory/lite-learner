@@ -3,12 +3,14 @@
 import Layout from '../../layouts/Layout.astro';
 import CoursesApp from '../../components/apps/CoursesApp.svelte';
 import { loadCourseTrees } from '../../lib/content/bundle';
+import { stripGlossaryRefs } from '../../lib/glossary/strip';
 
 const trees = await loadCourseTrees();
 const courses = trees.map((tree) => ({
   slug: tree.course.id,
   title: tree.course.data.title,
-  blurb: (tree.course.body ?? '').trim().split(/\n\s*\n/)[0] ?? '',
+  // Raw markdown shown as plain text, so strip any [[glossary]] syntax.
+  blurb: stripGlossaryRefs((tree.course.body ?? '').trim().split(/\n\s*\n/)[0] ?? ''),
   chapterCount: tree.chapters.length,
   lessonCount: tree.chapters.reduce((n, c) => n + c.lessons.length, 0),
 }));

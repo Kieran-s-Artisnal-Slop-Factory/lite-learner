@@ -27,6 +27,11 @@
  * A lesson with `desired_state` is a checkable EXERCISE; without one it is a
  * READING page (optionally with a seeded database to explore via
  * `initial_sql`).
+ *
+ * The separate `glossary` collection holds one term per file: `term` (display
+ * name) + `short` (popup description) in frontmatter, the body is the term's
+ * landing page. Reference terms from any markdown body as [[file-name]] or
+ * [[file-name|display text]].
  */
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
@@ -78,4 +83,14 @@ const lessons = defineCollection({
     }),
 });
 
-export const collections = { courses, chapters, lessons };
+const glossary = defineCollection({
+  loader: glob({ base: './src/content/glossary', pattern: '*.md' }),
+  schema: z.object({
+    // Display name shown in popups and as the default [[link]] text.
+    term: z.string(),
+    // One-or-two-sentence popup description.
+    short: z.string(),
+  }),
+});
+
+export const collections = { courses, chapters, lessons, glossary };

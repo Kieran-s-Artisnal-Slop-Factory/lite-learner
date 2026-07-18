@@ -418,3 +418,52 @@ main.page {
 .data-table tbody tr:hover td {
   background: color-mix(in srgb, var(--surface-raised-color) 50%, transparent);
 }
+
+/*
+ * Glossary. [[term]] references are baked into .glossary-link anchors by the
+ * remark plugin (lib/glossary/remark-glossary.mjs); Layout.astro's inline
+ * script builds the .glossary-popover on hover/click.
+ */
+.glossary-link {
+  color: var(--color-primary-strong);
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+  cursor: help;
+}
+
+.glossary-link:hover {
+  text-decoration-style: solid;
+}
+
+.glossary-popover {
+  position: absolute;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-raised-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+  font-size: var(--font-size-sm);
+}
+
+.glossary-popover .gp-term {
+  font-weight: 700;
+}
+
+.glossary-popover .gp-short {
+  color: var(--text-muted-color);
+}
+
+.glossary-popover .gp-more {
+  color: var(--color-primary-strong);
+  font-weight: 600;
+  text-decoration: none;
+  align-self: flex-start;
+}
+
+.glossary-popover .gp-more:hover {
+  text-decoration: underline;
+}

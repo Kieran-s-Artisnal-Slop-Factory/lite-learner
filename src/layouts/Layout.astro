@@ -63,6 +63,130 @@ const onboardingPath = href('/onboarding/');
     <main class="page">
       <slot />
     </main>
+    <script is:inline>
+      // Glossary popovers. The remark plugin bakes each [[term]] reference
+      // into an <a class="glossary-link"> carrying data-term/data-short, so
+      // this is pure display logic: hover/focus previews the definition,
+      // click toggles it (so touch users get the popup instead of a
+      // navigation), and the popup's "Read more" goes to the landing page.
+      // Middle-click / open-in-new-tab / no-JS still navigate normally.
+      //
+      // Dismissal is deliberately forgiving: leaving the link starts a grace
+      // timer (cancelled when the pointer reaches the popover, so "Read more"
+      // is clickable), and scrolling never dismisses — wheel scrolling moves
+      // elements under a stationary pointer, which fires mouseover events
+      // that must not count as "moved away".
+      (() => {
+        let popover = null;
+        let anchor = null;
+        let hideTimer = null;
+        let lastScroll = 0;
+
+        function cancelHide() {
+          clearTimeout(hideTimer);
+          hideTimer = null;
+        }
+
+        function scheduleHide() {
+          cancelHide();
+          hideTimer = setTimeout(hide, 350);
+        }
+
+        function hide() {
+          cancelHide();
+          popover?.remove();
+          popover = null;
+          anchor = null;
+        }
+
+        function show(link) {
+          if (anchor === link) return;
+          hide();
+          anchor = link;
+          popover = document.createElement('div');
+          popover.className = 'glossary-popover';
+          const term = document.createElement('p');
+          term.className = 'gp-term';
+          term.textContent = link.dataset.term || link.textContent;
+          const short = document.createElement('p');
+          short.className = 'gp-short';
+          short.textContent = link.dataset.short || '';
+          const more = document.createElement('a');
+          more.className = 'gp-more';
+          more.href = link.href;
+          more.textContent = 'Read more →';
+          popover.append(term, short, more);
+          document.body.appendChild(popover);
+
+          // Document-flow coordinates so the popover scrolls with the page.
+          // Flip above the link when the space below the viewport fold is
+          // too tight — that's the case where users previously had to scroll
+          // (and lost the popover).
+          const rect = link.getBoundingClientRect();
+          const width = Math.min(320, window.innerWidth - 16);
+          popover.style.maxWidth = width + 'px';
+          const pw = popover.offsetWidth;
+          const ph = popover.offsetHeight;
+          let left = rect.left + window.scrollX;
+          left = Math.min(left, window.scrollX + window.innerWidth - pw - 8);
+          popover.style.left = Math.max(window.scrollX + 8, left) + 'px';
+          const spaceBelow = window.innerHeight - rect.bottom;
+          const top =
+            spaceBelow < ph + 12 && rect.top > ph + 12
+              ? rect.top + window.scrollY - ph - 6
+              : rect.bottom + window.scrollY + 6;
+          popover.style.top = top + 'px';
+        }
+
+        // Scrolling must never dismiss: cancel pending hides and ignore the
+        // pointer-under-scroll mouseover noise for a moment afterwards.
+        window.addEventListener(
+          'scroll',
+          () => {
+            lastScroll = Date.now();
+            cancelHide();
+          },
+          { capture: true, passive: true }
+        );
+
+        document.addEventListener('mouseover', (e) => {
+          const link = e.target.closest?.('.glossary-link');
+          if (link) {
+            cancelHide();
+            show(link);
+            return;
+          }
+          if (e.target.closest?.('.glossary-popover')) {
+            cancelHide();
+            return;
+          }
+          if (popover && Date.now() - lastScroll > 600) scheduleHide();
+        });
+        document.addEventListener('focusin', (e) => {
+          const link = e.target.closest?.('.glossary-link');
+          if (link) {
+            cancelHide();
+            show(link);
+          } else if (!e.target.closest?.('.glossary-popover')) {
+            hide();
+          }
+        });
+        document.addEventListener('click', (e) => {
+          if (e.target.closest?.('.glossary-popover')) return; // "Read more" navigates
+          const link = e.target.closest?.('.glossary-link');
+          if (link && !e.ctrlKey && !e.metaKey && e.button === 0) {
+            e.preventDefault();
+            if (anchor === link) hide();
+            else show(link);
+            return;
+          }
+          if (popover) hide();
+        });
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') hide();
+        });
+      })();
+    </script>
     {
       import.meta.env.PROD ? (
         <script is:inline>

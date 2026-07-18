@@ -11,6 +11,7 @@ the output to any static host.
 - [Lessons: exercise or reading](#lessons-exercise-or-reading)
 - [Writing `desired_state`](#writing-desired_state)
 - [Tips & tricks for tougher solutions](#tips--tricks-for-tougher-solutions)
+- [Glossary terms](#glossary-terms)
 - [Previewing and validating](#previewing-and-validating)
 - [Renaming and updating content](#renaming-and-updating-content)
 - [Deploying](#deploying)
@@ -301,6 +302,70 @@ SELECT COUNT(*) AS n FROM orders;               -- becomes { n: <count> }
 - **Test the failure cases.** In the dev server, run not just the intended
   solution but the wrong-but-close attempts you expect from learners, and make
   sure they *fail*. State-based checking means an unexpected shortcut can pass.
+
+## Glossary terms
+
+The glossary is a shared vocabulary that any lesson can link into. A reference
+like `[[primary-key]]` renders as a dotted-underline link; hovering or tapping
+it shows a definition popup, and the popup's "Read more" (or the link itself)
+opens the term's own page. Every term also appears on the `/glossary/` index,
+reachable from the **Glossary** nav item.
+
+### One file per term
+
+Each term is a markdown file in `src/content/glossary/`. The **file name is the
+slug** you reference; the frontmatter carries the display name and the popup
+text; the body is the term's landing page:
+
+```markdown
+<!-- src/content/glossary/primary-key.md -->
+---
+term: Primary key
+short: A column whose value uniquely identifies each row in a table.
+---
+
+The full landing-page article goes here, shown at /glossary/primary-key/.
+It's ordinary lesson markdown — fenced ```sql blocks are highlighted, and it
+can reference other terms like [[foreign-key]] too.
+```
+
+Keep `term` and `short` each on a **single line** — the reference resolver reads
+them with a deliberately minimal parser. `term` is the display name shown in the
+popup and used as the default link text; `short` is the one- or two-sentence
+popup blurb.
+
+### Referencing terms
+
+Anywhere in lesson, chapter, or course markdown (and inside other glossary
+entries):
+
+```
+[[primary-key]]                → links as "Primary key" (the term field)
+[[primary-key|primary keys]]   → your own display text, for casing or plurals
+```
+
+The default display is the `term` field verbatim, so use the `|` form for
+mid-sentence casing or plurals. **References inside code blocks and inline code
+are left alone** — that's how this guide shows `[[…]]` without triggering it, and
+how a SQL example can mention `[[`-like text safely.
+
+Course and chapter *descriptions* render through the same pipeline, so terms
+link there too. The one exception is the short blurb on the course **listing**
+page, which is shown as plain text — a `[[ref]]` in a course's opening paragraph
+is stripped to its display text there rather than linked.
+
+### The safety net, and one gotcha
+
+An unknown slug **fails the build**, the same way a broken `chapters:`/`lessons:`
+reference does — you can't ship a dangling `[[term]]`. The gotcha: the resolver
+reads `src/content/glossary/` **once when the dev server starts**, and it's what
+bakes each reference's link text and popup blurb. So restart `npm run dev` after
+you **add** a term (before referencing it), **rename** one (its slug and
+`/glossary/<slug>/` URL change — update references to match), or edit a term's
+`term`/`short` and want existing popups to reflect it. A term's landing-page
+**body** is ordinary content and refreshes live; only the baked-in reference
+text needs the restart. A production `npm run build` always reads the current
+files, so none of this affects the deployed site.
 
 ## Previewing and validating
 

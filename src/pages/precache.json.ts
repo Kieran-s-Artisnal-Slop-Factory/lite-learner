@@ -6,12 +6,14 @@
  * keep in sync.
  */
 import type { APIRoute } from 'astro';
+import { getCollection } from 'astro:content';
 import { loadCourseTrees } from '../lib/content/bundle';
 
 export const GET: APIRoute = async () => {
   const paths = [
     '',
     'courses/',
+    'glossary/',
     'playground/',
     'settings/',
     'onboarding/',
@@ -32,6 +34,9 @@ export const GET: APIRoute = async () => {
         paths.push(`courses/${lesson.id}/`);
       }
     }
+  }
+  for (const term of await getCollection('glossary')) {
+    paths.push(`glossary/${term.id}/`);
   }
   return new Response(JSON.stringify(paths), {
     headers: { 'Content-Type': 'application/json' },
