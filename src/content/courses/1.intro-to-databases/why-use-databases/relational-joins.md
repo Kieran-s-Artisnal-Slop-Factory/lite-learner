@@ -4,7 +4,7 @@ title: "Joins: ask for exactly what you need"
 
 The spreadsheet workflow is *open the whole file, scroll, squint, filter by hand*. The database workflow is *opn a connection, describe the answer you want; receive exactly that, and nothing else*.
 
-The star of that trick is the **join**: combining related tables at the moment you ask, using those id-based relationships from chapter one.
+The star of that trick is the **[[join|join]]**: combining related tables at the moment you ask, using those id-based [[relationship|relationships]] from chapter one.
 
 Back to our library. Books point at the members who borrowed them:
 

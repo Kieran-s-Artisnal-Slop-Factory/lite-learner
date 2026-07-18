@@ -44,14 +44,14 @@ So, why not just the title? Well, in our table earlier the titles **were** uniqu
 
 Different books can share a title, and titles get retyped with typos. So, the database assigns each row a number, incremented (goes up by 1) each time, and guaranteed
 never to repeat. When someone wants a book, they refer to "book 8" rather than "the row
-whose title is The Trial… and might be the one I'm looking for... probably". This special column is called the **primary key**, and nearly every table has one. It's the same idea as a membership number on a library card, a student ID, or an order number on a
+whose title is The Trial… and might be the one I'm looking for... probably". This special column is called the **[[primary-key|primary key]]**, and nearly every table has one. It's the same idea as a membership number on a library card, a student ID, or an order number on a
 receipt, nobody **is** their number, but the number makes lookups unambiguous.
 
 ## Columns have types
 
 Notice each column holds one *kind* of value: `title` is text, `year` is a
 number, `available` is yes/no. Databases make this explicit. When you create
-a table you declare each column's **type**, and the database rejects values
+a table you declare each column's **[[data-type|type]]**, and the database rejects values
 that don't fit. That's one of those "the database checks you" rules from the
 previous lesson, and it's why nobody can accidentally put "next Tuesday" in a
 number column.

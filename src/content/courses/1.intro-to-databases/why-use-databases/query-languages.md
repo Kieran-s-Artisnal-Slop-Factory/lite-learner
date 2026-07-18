@@ -2,11 +2,11 @@
 title: "Query languages"
 ---
 
-If databases are things you *ask*, you need a language to ask in. For relational databases that language is **SQL** (Structured Query Language)
+If databases are things you *ask*, you need a language to ask in. For relational databases that language is **[[sql|SQL]]** (Structured Query Language)
 
 ## You say what, not how
 
-SQL is **declarative**: you describe the result you want, not the steps to
+SQL is **[[declarative|declarative]]**: you describe the result you want, not the steps to
 compute it.
 
 ```sql
@@ -16,7 +16,7 @@ WHERE joined < '2020-01-01'
 ORDER BY name;
 ```
 
-Even never having seen SQL, you can nearly read that aloud: *names and emails of members who joined before 2020, alphabetically.* Nowhere does it say which file to scan, what order to read rows in, or how to sort efficiently. The database's **query planner** works that out, and this is a genuine performance superpower. The same question might be answered by brute-force scanning or by an index shortcut a million times faster; the planner picks, using knowledge about your data that you don't have. Your hand-written file-reading code would do it one way, forever, and you'd maintain that code for every new question.
+Even never having seen SQL, you can nearly read that aloud: *names and emails of members who joined before 2020, alphabetically.* Nowhere does it say which file to scan, what order to read rows in, or how to sort efficiently. The database's **[[query-planner|query planner]]** works that out, and this is a genuine performance superpower. The same question might be answered by brute-force scanning or by an [[index|index]] shortcut a million times faster; the planner picks, using knowledge about your data that you don't have. Your hand-written file-reading code would do it one way, forever, and you'd maintain that code for every new question.
 
 ## Learn once, use everywhere
 

@@ -16,16 +16,16 @@ for most software: [SQLite](https://sqlite.org/index.html), [PostgreSQL](https:/
 The same tables, stored column-by-column instead. That sounds like a
 technicality, but it changes everything for some workloads. Adding up one column across a
 billion rows only has to read *that column*, not a billion whole rows.
-Columnar databases power analytics and reporting. For when you want to know  "average order value per month for five years". Not impossible with other databases, but if this is your main workload, column-store's are faster than most alternatives, at the cost of being slower to update individual rows. Examples include : [DuckDB](https://duckdb.org/), [ClickHouse](https://clickhouse.com/clickhouse), [Amazon Redshift](https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html).
+[[columnar-database|Columnar databases]] power analytics and reporting. For when you want to know  "average order value per month for five years". Not impossible with other databases, but if this is your main workload, column-store's are faster than most alternatives, at the cost of being slower to update individual rows. Examples include : [DuckDB](https://duckdb.org/), [ClickHouse](https://clickhouse.com/clickhouse), [Amazon Redshift](https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html).
 
 ## Key-value
 
-The simplest possible idea: a giant lookup of *key → value*. Imagine you want to store data about where a bunch of cars are for a valet service. A person is given the ticket `2204`, and the car is parked in `A26`. You give the database `2204:A26`, when they come back at the end of the night, you ask it for `2204` and it gives you back `A26`. No tables, no relationships, no questions other than "what's under this
+The simplest possible idea: a giant lookup of *[[key-value-store|key → value]]*. Imagine you want to store data about where a bunch of cars are for a valet service. A person is given the ticket `2204`, and the car is parked in `A26`. You give the database `2204:A26`, when they come back at the end of the night, you ask it for `2204` and it gives you back `A26`. No tables, no relationships, no questions other than "what's under this
 key?". So, why? Speed. It's best suited for short lived data that needs ot be accessed fast. Used for caches, user sessions, and feature flags. Examples: [Worker KV](https://developers.cloudflare.com/kv/), [Redis](https://redis.io/), [Amazon DynamoDB](https://aws.amazon.com/dynamodb/).
 
 ## Document
 
-Each record is a self-contained **document** (usually JSON-like): 
+Each record is a self-contained **[[document-database|document]]** (usually JSON-like): 
 
 ```json
 {
@@ -40,7 +40,7 @@ All of a member's data in one nested bundle. There's no fixed list of columns, s
 ## Graph
 
 Some data *is mostly connections*. Who follows whom, what depends on what,
-how A launders money to D through B and C. Graph databases store **nodes**
+how A launders money to D through B and C. [[graph-database|Graph databases]] store **nodes**
 (things) and **edges** (connections) directly:
 
 ```mermaid
@@ -78,7 +78,7 @@ Are built to answer "friend-of-a-friend"-style questions that require hopping ma
 ## Vector
 
 The newcomer, riding the AI wave. Text, images, and audio can be converted
-into long lists of numbers (**embeddings**) where similar meanings land near
+into long lists of numbers (**[[embedding|embeddings]]**) where similar meanings land near
 each other. A highly specialized system, for highly specific tasks. These databases are inherently mathematical, which can make them hard to explain ([here](https://www.pinecone.io/learn/vector-embeddings/) is a good one). Here is an example:
 
 Imagine you have data like:
@@ -172,9 +172,9 @@ and the query would look something like this:
               │               ● Italian Recipes
 ```
 
-A vector database stores those lists and answers "what's most *similar* to this?". They power features that were traditionally difficult, and highly specialized like semantic search and retrieval for AI assistants. Examples: [Pinecone](https://www.pinecone.io/), [Qdrant](https://qdrant.tech/), and the [pgvector](https://github.com/pgvector/pgvector) extension for [PostgreSQL](https://www.postgresql.org/).
+A [[vector-database|vector database]] stores those lists and answers "what's most *similar* to this?". They power features that were traditionally difficult, and highly specialized like semantic search and retrieval for AI assistants. Examples: [Pinecone](https://www.pinecone.io/), [Qdrant](https://qdrant.tech/), and the [pgvector](https://github.com/pgvector/pgvector) extension for [PostgreSQL](https://www.postgresql.org/).
 
-## Time-series
+## [[time-series-database|Time-series]]
 
 Built for endless streams of timestamped measurements, for things like server temperatures, heart rates, stock ticks. Optimized for "append constantly, query by time
 range, summarize per minute/hour/day", with old data compressed or expired

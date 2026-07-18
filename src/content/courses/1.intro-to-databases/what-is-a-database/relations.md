@@ -27,12 +27,12 @@ them by id.** Here's an example:
 
 The new `borrowed_by` column doesn't hold a name or a phone number, it holds
 a **member id**. A common format you might see is `<table name>.<column>`, so in this case it's referencing `members.id`. Row 2's `borrowed_by = 1` means "this book is out with member 1", and member 1's row has everything else about Ada, stored exactly
-once (fancy name for this is **normalization**). Change her phone number in one place and every book she's borrowed is
+once (fancy name for this is **[[normalization|normalization]]**). Change her phone number in one place and every book she's borrowed is
 automatically up to date. An empty `borrowed_by` simply means the book is on
 the shelf.
 
-This pointing-between-tables is a **relationship**, and databases built
-around tables connected this way are called **relational databases**. SQLite,
+This pointing-between-tables is a **[[relationship|relationship]]**, and databases built
+around tables connected this way are called **[[relational-database|relational databases]]**. SQLite,
 PostgreSQL, and MySQL are all relational, and they are the kind you'll meet
 most often.
 
@@ -41,7 +41,7 @@ most often.
 ## And non-relational?
 
 Not every database organizes data as inter-pointing tables. A
-**non-relational** database (often called **NoSQL**) might store each thing
+**non-relational** database (often called **[[nosql|NoSQL]]**) might store each thing
 as one self-contained document, closer to a filled-in form:
 
 ```json

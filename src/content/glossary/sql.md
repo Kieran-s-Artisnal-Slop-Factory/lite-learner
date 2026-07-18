@@ -15,3 +15,7 @@ SQL statements fall into a few families — querying data (`SELECT`), changing
 data (`INSERT`, `UPDATE`, `DELETE`), and defining structure (`CREATE TABLE`,
 `CREATE INDEX`). SQLite implements almost all of standard SQL, with a handful
 of its own conveniences.
+
+## Additional Resources
+
+- [SQL: The Untold Story](https://www.youtube.com/watch?v=xQ2Ln4ob7Y8) 

@@ -20,8 +20,8 @@ The headings describe **what** you're recording; each line is
 **one** of the **things** (people in this case) you're recording.
 
 A database is built from exactly that shape. The whole grid is called a
-**table**. Each line is a **row** (one contact, one order, one movie — one
-*thing*). Each heading is a **column** (one fact that every row has). Where a
+**[[table|table]]**. Each line is a **[[row|row]]** (one contact, one order, one movie — one
+*thing*). Each heading is a **[[column|column]]** (one fact that every row has). Where a
 spreadsheet file might contain a few sheets, a database usually contains many
 tables, one per kind of thing it tracks.
 
@@ -48,7 +48,7 @@ People use "database" loosely for two related things:
 
 1. **The data itself**; the organized collection of tables.
 2. **The software that manages it**; properly called a *database management
-   system* (DBMS). [SQLite](https://sqlite.org/index.html), [PostgreSQL](https://www.postgresql.org/), [MySQL](https://www.mysql.com/), [TigerBeetle](https://tigerbeetle.com/), [DuckDB](https://duckdb.org/) and [MongoDB](https://www.mongodb.com/) are all database management systems.
+   system* ([[dbms|DBMS]]). [SQLite](https://sqlite.org/index.html), [PostgreSQL](https://www.postgresql.org/), [MySQL](https://www.mysql.com/), [TigerBeetle](https://tigerbeetle.com/), [DuckDB](https://duckdb.org/) and [MongoDB](https://www.mongodb.com/) are all database management systems.
 
 In everyday speech (and in this course) "database" covers both, and the
 context makes it clear which one is meant.
